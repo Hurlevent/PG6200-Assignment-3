@@ -29,9 +29,13 @@
     <ClCompile Include="src\VirtualTrackball.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="hiddenline.frag" />
+    <None Include="hiddenline.geom" />
     <None Include="shaders\phong.frag" />
     <None Include="shaders\phong.geom" />
     <None Include="shaders\phong.vert" />
+    <None Include="shadow.frag" />
+    <None Include="shadow.vert" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0EB6082A-7B48-4E60-B4B3-2EB3C7254AC1}</ProjectGuid>

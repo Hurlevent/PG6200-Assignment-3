@@ -211,6 +211,7 @@ void GameManager::init() {
 	camera.projection = glm::perspective(fovy/zoom,
 			window_width / (float) window_height, near_plane, far_plane);
 	camera.view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -10.0f));
+
 	light.projection = glm::perspective(90.0f, 1.0f, near_plane, far_plane);
 	light.view = glm::lookAt(light.position, glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
@@ -230,14 +231,27 @@ void GameManager::init() {
 
 	//Create the programs we will use
 	phong_program.reset(new Program("shaders/phong.vert", "shaders/phong.geom", "shaders/phong.frag"));
+
+	CHECK_GL_ERRORS();
+
+	shadow_program.reset(new Program("shaders/shadow.vert", "shaders/shadow.frag"));
+	
 	CHECK_GL_ERRORS();
 
 	//Set uniforms for the programs
 	//Typically diffuse_cubemap and shadowmap
 	phong_program->use();
+
+	/*
+		WE WILL HAVE TO WRITE CODE HERE!!!!
+	*/
+
 	phong_program->disuse();
 	CHECK_GL_ERRORS();
 	
+	// Initialize shadow_fbo
+	shadow_fbo.reset(new ShadowFBO(shadow_map_width, shadow_map_height));
+
 	//Set up VAOs and set as input to shaders
 	glGenVertexArrays(2, &vao[0]);
 	glBindVertexArray(vao[0]);
@@ -259,15 +273,15 @@ void GameManager::init() {
 }
 
 void GameManager::renderColorPass() {
-	glViewport(0, 0, window_width, window_height);
-	glBindFramebufferEXT(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, window_width, window_height); // WHAT THE HELL IS A VIEWPORT?
+	glBindFramebufferEXT(GL_FRAMEBUFFER, 0); // Make sure that we are rendering to screen
 
 	//Create the new view matrix that takes the trackball view into account
 	glm::mat4 view_matrix_new = camera.view*cam_trackball.getTransform();
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	phong_program->use();
 	
+	phong_program->use();
 	//Bind shadow map and diffuse cube map
 
 	/**
@@ -296,6 +310,18 @@ void GameManager::renderColorPass() {
 	  * Create modelview matrix and normal matrix and set as input
 	  */
 	glBindVertexArray(vao[0]);
+
+	if(m_rendering_mode)
+	{
+		if(m_rendering_mode == RENDERING_MODE_WIREFRAME)
+		{
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		} else
+		{
+			// Change to hidden line here!
+		}
+	}
+
 	for (int i=0; i<n_models; ++i) {
 		glm::mat4 model_matrix = model_matrices.at(i);
 		glm::mat4 model_matrix_inverse = glm::inverse(model_matrix);
@@ -311,12 +337,62 @@ void GameManager::renderColorPass() {
 
 		glDrawArrays(GL_TRIANGLES, 0, model->getNVertices());
 	}
+
+	if(m_rendering_mode)
+	{
+		glPolygonMode(GL_FRONT, GL_FILL);
+	}
+
 	glBindVertexArray(0);
 }
 
 void GameManager::renderShadowPass() {
 	//Render the scene from the light, with the lights projection, etc. into the shadow_fbo. Store only the depth values
 	//Remember to set the viewport, clearing the depth buffer, etc.
+
+	glViewport(0, 0, shadow_map_width, shadow_map_height); // What the hell is a viewport???
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // WTF????
+
+	glm::mat4 view_matrix_new = camera.view*cam_trackball.getTransform(); // Camera view matrix
+
+	
+	//shadow_fbo->bind();
+
+	// Implement rendering to textures here, maybe even create different shader programs and switch to them, in order to render the shadow maps
+	// Everything that is rendered when shadow_fbo is binded, should be rendered to the fbo, rather than the screen.
+
+
+	//phong_program->use();
+	shadow_program->use();
+
+	{
+		glBindVertexArray(vao[1]);
+
+		glm::mat4 model_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(cube_scale));
+		glm::mat4 model_matrix_inverse = glm::inverse(model_matrix);
+		glm::mat4 modelview_matrix = view_matrix_new*model_matrix;
+		glm::mat4 modelview_matrix_inverse = glm::inverse(modelview_matrix);
+		glm::mat4 modelviewprojection_matrix = camera.projection*modelview_matrix;
+		glm::vec3 light_pos = glm::mat3(model_matrix_inverse)*light.position / model_matrix_inverse[3].w;
+
+		glUniform3fv(shadow_program->getUniform("light_pos"), 1, glm::value_ptr(light_pos));
+		//glUniformMatrix4fv(shadow_program->getUniform("modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
+		//glUniformMatrix4fv(shadow_program->getUniform("modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
+
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+	}
+	
+
+	/**
+	* Render model
+	* Create modelview matrix and normal matrix and set as input
+	*/
+	
+	
+	//shadow_fbo->unbind();
+	
+
 }
 
 void GameManager::render() {
@@ -326,7 +402,7 @@ void GameManager::render() {
 	light.position = glm::mat3(rotation)*light.position;
 	light.view = glm::lookAt(light.position,  glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
-	renderShadowPass();
+	//renderShadowPass();
 	renderColorPass();
 	
 	CHECK_GL_ERRORS();
@@ -363,6 +439,15 @@ void GameManager::play() {
 				case SDLK_MINUS:
 					zoomOut();
 					break;
+				case SDLK_1:
+					phong_rendering();
+					break;
+				case SDLK_2:
+					wireframe_rendering();
+					break;
+				case SDLK_3:
+					hiddenline_rendering();
+					break;
 				}
 				break;
 			case SDL_QUIT: //e.g., user clicks the upper right x
@@ -389,6 +474,23 @@ void GameManager::zoomOut() {
 	camera.projection = glm::perspective(fovy/zoom,
 			window_width / (float) window_height, near_plane, far_plane);
 }
+
+void GameManager::phong_rendering()
+{
+	m_rendering_mode = RENDERING_MODE_PHONG;
+}
+
+void GameManager::wireframe_rendering()
+{
+	// I might want to disable phong shading here!
+	m_rendering_mode = RENDERING_MODE_WIREFRAME;
+}
+
+void GameManager::hiddenline_rendering()
+{
+	m_rendering_mode = RENDERING_MODE_HIDDENLINE;
+}
+
 
 void GameManager::quit() {
 	std::cout << "Bye bye..." << std::endl;

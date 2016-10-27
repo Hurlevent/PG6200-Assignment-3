@@ -19,5 +19,6 @@ void main() {
 	g_l = normalize(light_pos - position);
 	g_n = normalize(normal);
 
-	gl_Position = modelviewprojection_matrix * vec4(position, 1.0);;
+	gl_Position = modelviewprojection_matrix * vec4(position, 1.0);
+	//gl_Position = light_matrix * vec4(light_pos, 1.0);
 }

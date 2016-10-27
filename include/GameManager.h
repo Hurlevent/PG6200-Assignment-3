@@ -18,6 +18,10 @@
 #include "VirtualTrackball.h"
 #include "ShadowFBO.h"
 
+#define RENDERING_MODE_PHONG 0
+#define RENDERING_MODE_WIREFRAME 1
+#define RENDERING_MODE_HIDDENLINE 2
+
 /**
  * This class handles the game logic and display.
  * Uses SDL as the display manager, and glm for 
@@ -92,9 +96,15 @@ protected:
 private:
 	void zoomIn();
 	void zoomOut();
+
+	void phong_rendering();
+	void wireframe_rendering();
+	void hiddenline_rendering();
+
+	int m_rendering_mode;
 	
 	GLuint vao[2]; //< Vertex array objects
-	std::shared_ptr<GLUtils::Program> phong_program, wireframe_program, exploded_view_program, shadow_program;
+	std::shared_ptr<GLUtils::Program> phong_program, wireframe_program, exploded_view_program, shadow_program, hiddenline_program;
 	std::shared_ptr<GLUtils::CubeMap> diffuse_cubemap;
 	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > cube_vertices, cube_normals;
 
@@ -122,6 +132,9 @@ private:
 	SDL_GLContext main_context; //< Our opengl context handle 
 	
 	VirtualTrackball cam_trackball;
+
+
+
 };
 
 #endif // _GAMEMANAGER_H_
