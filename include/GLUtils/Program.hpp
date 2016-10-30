@@ -70,6 +70,8 @@ public:
 		link();
 	}
 
+	GLuint name; //< OpenGL shader program
+
 	inline void use() {
 		glUseProgram(name);
 	}
@@ -161,8 +163,6 @@ private:
 		
 		glAttachShader(name, s);
 	}
-
-	GLuint name; //< OpenGL shader program
 
 };
 

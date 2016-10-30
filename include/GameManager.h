@@ -103,7 +103,7 @@ private:
 
 	int m_rendering_mode;
 	
-	GLuint vao[2]; //< Vertex array objects
+	GLuint vao[3]; //< Vertex array objects
 	std::shared_ptr<GLUtils::Program> phong_program, wireframe_program, exploded_view_program, shadow_program, hiddenline_program;
 	std::shared_ptr<GLUtils::CubeMap> diffuse_cubemap;
 	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > cube_vertices, cube_normals;
@@ -133,7 +133,13 @@ private:
 	
 	VirtualTrackball cam_trackball;
 
+	struct
+	{
+		std::vector<float> vertices;
+		glm::vec3 normal;
+		std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER>> vbo;
 
+	} shadow_map_model;
 
 };
 

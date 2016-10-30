@@ -1,4 +1,5 @@
-#version 150
+#version 330
+
 uniform mat4 modelviewprojection_matrix;
 uniform mat4 modelview_matrix_inverse;
 uniform mat4 light_matrix;
@@ -6,6 +7,7 @@ uniform vec3 light_pos;
 
 in vec3 position;
 in vec3 normal;
+
 
 smooth out vec3 g_v;
 smooth out vec3 g_l;
@@ -20,5 +22,5 @@ void main() {
 	g_n = normalize(normal);
 
 	gl_Position = modelviewprojection_matrix * vec4(position, 1.0);
-	//gl_Position = light_matrix * vec4(light_pos, 1.0);
+
 }

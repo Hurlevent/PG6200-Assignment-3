@@ -130,10 +130,20 @@ inline void checkSDLError(int line = -1) {
 }
 
 
-GameManager::GameManager() {
+GameManager::GameManager() : m_rendering_mode(RENDERING_MODE_PHONG) {
 	my_timer.restart();
 	zoom = 1;
 	light.position = glm::vec3(10, 0, 0);
+
+	shadow_map_model.vertices = {
+		-0.5f, -0.5f, 0.5f,
+		-0.5f, 0, 0.5f,
+		0, -0.5f, 0.5f,
+		0, -0.5f, 0.5f,
+		0, 0, 0.5f,
+		-0.5f, 0, 0.5f
+	};
+	shadow_map_model.normal = glm::vec3(0,0,1.0f);
 }
 
 GameManager::~GameManager() {
@@ -206,6 +216,8 @@ void GameManager::init() {
 	model.reset(new Model("models/bunny.obj", false));
 	cube_vertices.reset(new BO<GL_ARRAY_BUFFER>(cube_vertices_data, sizeof(cube_vertices_data)));
 	cube_normals.reset(new BO<GL_ARRAY_BUFFER>(cube_normals_data, sizeof(cube_normals_data)));
+
+	shadow_map_model.vbo.reset(new BO<GL_ARRAY_BUFFER>(shadow_map_model.vertices.data(), sizeof(shadow_map_model.vertices.data())));
 	
 	//Set the matrices we will use
 	camera.projection = glm::perspective(fovy/zoom,
@@ -229,13 +241,29 @@ void GameManager::init() {
 		model_colors.push_back(glm::vec3(tx+0.5, ty+0.5, tz+0.5));
 	}
 
+	std::cout << "INIT before phong-compile and linking" << std::endl;
+
 	//Create the programs we will use
 	phong_program.reset(new Program("shaders/phong.vert", "shaders/phong.geom", "shaders/phong.frag"));
 
 	CHECK_GL_ERRORS();
+	std::cout << "INIT after phong-compile and linking" << std::endl;
+	std::cout << "INIT before shadow-compile and linking" << std::endl;
 
 	shadow_program.reset(new Program("shaders/shadow.vert", "shaders/shadow.frag"));
 	
+	CHECK_GL_ERRORS();
+
+	std::cout << "INIT after shadow-compile and linking" << std::endl;
+	try
+	{
+		hiddenline_program.reset(new Program("shaders/phong.vert", "shaders/hiddenline.geom", "shaders/hiddenline.frag"));
+	} catch(std::runtime_error &e)
+	{
+		std::cerr << "Failed to compile+link shader program: " << e.what() << std::endl;
+	}
+	
+	std::cout << "INIT after hiddenline-compile and linking" << std::endl;
 	CHECK_GL_ERRORS();
 
 	//Set uniforms for the programs
@@ -253,23 +281,42 @@ void GameManager::init() {
 	shadow_fbo.reset(new ShadowFBO(shadow_map_width, shadow_map_height));
 
 	//Set up VAOs and set as input to shaders
-	glGenVertexArrays(2, &vao[0]);
+	glGenVertexArrays(3, &vao[0]);
 	glBindVertexArray(vao[0]);
 	model->getVertices()->bind();
 	phong_program->setAttributePointer("position", 3);
+	std::cout << "INIT Before setAttribPointer position for shadow program" << std::endl;
+	shadow_program->setAttributePointer("position", 3);
+	std::cout << "INIT After setAttribPointer position for shadow program" << std::endl;
+
 	model->getNormals()->bind();
 	phong_program->setAttributePointer("normal", 3);
+	//std::cout << "INIT Before setAttribPointer normals for shadow program" << std::endl;
+	//shadow_program->setAttributePointer("normal", 3);
+	//std::cout << "INIT After setAttribPointer normals for shadow program" << std::endl;
 	model->getVertices()->unbind(); //Unbinds both vertices and normals
 	glBindVertexArray(0);
 	
 	glBindVertexArray(vao[1]);
 	cube_vertices->bind();
 	phong_program->setAttributePointer("position", 3);
+	//shadow_program->setAttributePointer("position", 3);
 	cube_normals->bind();
 	phong_program->setAttributePointer("normal", 3);
+	//shadow_program->setAttributePointer("normal", 3);
 	model->getVertices()->unbind(); //Unbinds both vertices and normals
 	glBindVertexArray(0);
+
+	/*
+	glBindVertexArray(vao[2]);
+	shadow_map_model.vbo->bind();
+	phong_program->setAttributePointer("position", 3);
+	// We probably don't need the normal, since we can probably just use the camera.lookAt vector.
+	shadow_map_model.vbo->unbind();
+	glBindVertexArray(0);
+	*/
 	CHECK_GL_ERRORS();
+	std::cout << "END OF INIT " << std::endl;
 }
 
 void GameManager::renderColorPass() {
@@ -280,7 +327,8 @@ void GameManager::renderColorPass() {
 	glm::mat4 view_matrix_new = camera.view*cam_trackball.getTransform();
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
+
+	//phong_program->use();
 	phong_program->use();
 	//Bind shadow map and diffuse cube map
 
@@ -290,13 +338,13 @@ void GameManager::renderColorPass() {
 	{
 		glBindVertexArray(vao[1]);
 
-		glm::mat4 model_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(cube_scale));
-		glm::mat4 model_matrix_inverse = glm::inverse(model_matrix);
+		glm::mat4 model_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(cube_scale)); // Ok, så vi lager en identitetsmatrise som er skalert med 22.5
+		glm::mat4 model_matrix_inverse = glm::inverse(model_matrix); // WTF???
 		glm::mat4 modelview_matrix = view_matrix_new*model_matrix;
 		glm::mat4 modelview_matrix_inverse = glm::inverse(modelview_matrix);
 		glm::mat4 modelviewprojection_matrix = camera.projection*modelview_matrix;
-		glm::vec3 light_pos = glm::mat3(model_matrix_inverse)*light.position/model_matrix_inverse[3].w;
-	
+		glm::vec3 light_pos = glm::mat3(model_matrix_inverse)*light.position/model_matrix_inverse[3].w; // HVA GJØR DENNE FORMELEN??
+
 		glUniform3fv(phong_program->getUniform("light_pos"), 1, glm::value_ptr(light_pos));
 		glUniform3fv(phong_program->getUniform("color"), 1, glm::value_ptr(glm::vec3(1.0f, 0.8f, 0.8f)));
 		glUniformMatrix4fv(phong_program->getUniform("modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
@@ -309,18 +357,23 @@ void GameManager::renderColorPass() {
 	  * Render model
 	  * Create modelview matrix and normal matrix and set as input
 	  */
-	glBindVertexArray(vao[0]);
 
-	if(m_rendering_mode)
+	if (m_rendering_mode)
 	{
-		if(m_rendering_mode == RENDERING_MODE_WIREFRAME)
+		if (m_rendering_mode == RENDERING_MODE_WIREFRAME)
 		{
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		} else
+		}
+		else
 		{
 			// Change to hidden line here!
+			phong_program->disuse();
+			hiddenline_program->use();
+
 		}
 	}
+	
+	glBindVertexArray(vao[0]);
 
 	for (int i=0; i<n_models; ++i) {
 		glm::mat4 model_matrix = model_matrices.at(i);
@@ -330,20 +383,36 @@ void GameManager::renderColorPass() {
 		glm::mat4 modelviewprojection_matrix = camera.projection*modelview_matrix;
 		glm::vec3 light_pos = glm::mat3(model_matrix_inverse)*light.position/model_matrix_inverse[3].w;
 	
-		glUniform3fv(phong_program->getUniform("light_pos"), 1, glm::value_ptr(light_pos));
-		glUniform3fv(phong_program->getUniform("color"), 1, glm::value_ptr(model_colors.at(i)));
-		glUniformMatrix4fv(phong_program->getUniform("modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
-		glUniformMatrix4fv(phong_program->getUniform("modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
 
+		glUniform3fv((m_rendering_mode != RENDERING_MODE_HIDDENLINE) ? phong_program->getUniform("light_pos") : hiddenline_program->getUniform("light_pos"), 1, glm::value_ptr(light_pos));
+		glUniform3fv((m_rendering_mode != RENDERING_MODE_HIDDENLINE) ? phong_program->getUniform("color") : hiddenline_program->getUniform("color"), 1, glm::value_ptr(model_colors.at(i)));
+		glUniformMatrix4fv((m_rendering_mode != RENDERING_MODE_HIDDENLINE) ? phong_program->getUniform("modelviewprojection_matrix") : hiddenline_program->getUniform("modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
+		glUniformMatrix4fv((m_rendering_mode != RENDERING_MODE_HIDDENLINE) ? phong_program->getUniform("modelview_matrix_inverse") : hiddenline_program->getUniform("modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
+		
+		/*if (m_rendering_mode == RENDERING_MODE_HIDDENLINE) {
+			std::cout << GLUtils::mat4ToString(cam_trackball.getTransform()).c_str() << std::endl;
+			glProgramUniformMatrix4fv(hiddenline_program->getUniform("rotation_matrix"), hiddenline_program->getUniform("rotation_matrix"), 1, 0, glm::value_ptr(cam_trackball.getTransform()));
+		}*/
+		
 		glDrawArrays(GL_TRIANGLES, 0, model->getNVertices());
 	}
 
+	glBindVertexArray(0);
+	
 	if(m_rendering_mode)
 	{
-		glPolygonMode(GL_FRONT, GL_FILL);
+		if (m_rendering_mode == RENDERING_MODE_WIREFRAME)
+		{
+			glPolygonMode(GL_FRONT, GL_FILL);
+		}
+		else
+		{
+			hiddenline_program->disuse();
+			phong_program->use();
+		}
 	}
 
-	glBindVertexArray(0);
+	phong_program->disuse();
 }
 
 void GameManager::renderShadowPass() {
@@ -366,10 +435,39 @@ void GameManager::renderShadowPass() {
 	//phong_program->use();
 	shadow_program->use();
 
+
+	/*
+			HVA VI MÅ GJØRE!!
+			1. Vi må finne ut rettningen som lyset peker i.
+			2. Så må vi transformere lyset hen til kameraet.
+	*/
+
 	{
 		glBindVertexArray(vao[1]);
 
-		glm::mat4 model_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(cube_scale));
+		glm::mat4 model_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(cube_scale)); // Så vi lager en matrise som er
+		//std::cout << GLUtils::mat4ToString(model_matrix).c_str() << std::endl;
+		glm::mat4 model_matrix_inverse = glm::inverse(model_matrix);
+		//std::cout << GLUtils::mat4ToString(model_matrix_inverse).c_str() << std::endl;
+		glm::mat4 modelview_matrix = view_matrix_new*model_matrix;
+		glm::mat4 modelview_matrix_inverse = glm::inverse(modelview_matrix);
+		glm::mat4 modelviewprojection_matrix = camera.projection*modelview_matrix;
+		glm::vec3 light_pos = glm::mat3(model_matrix_inverse)*light.position / model_matrix_inverse[3].w;
+
+		glm::mat4 light_model_view_projection = light.projection * light.view * glm::mat4(1.0);
+		std::cout << GLUtils::mat4ToString(light_model_view_projection).c_str() << std::endl;
+
+		glProgramUniformMatrix4fv(shadow_program->name, shadow_program->getUniform("light_transform"), 1, GL_FALSE, glm::value_ptr(light_model_view_projection));
+		//glProgramUniformMatrix4fv(shadow_program->name, shadow_program->getUniform("light_transform"), 1, GL_FALSE, glm::value_ptr(light.position));
+		//glProgramUniformMatrix4fv(shadow_program->name, shadow_program->getUniform("modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
+		//glUniformMatrix4fv(shadow_program->getUniform("modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
+
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+	}
+	
+	/*
+	for (int i = 0; i<n_models; ++i) {
+		glm::mat4 model_matrix = model_matrices.at(i);
 		glm::mat4 model_matrix_inverse = glm::inverse(model_matrix);
 		glm::mat4 modelview_matrix = view_matrix_new*model_matrix;
 		glm::mat4 modelview_matrix_inverse = glm::inverse(modelview_matrix);
@@ -377,18 +475,18 @@ void GameManager::renderShadowPass() {
 		glm::vec3 light_pos = glm::mat3(model_matrix_inverse)*light.position / model_matrix_inverse[3].w;
 
 		glUniform3fv(shadow_program->getUniform("light_pos"), 1, glm::value_ptr(light_pos));
-		//glUniformMatrix4fv(shadow_program->getUniform("modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
-		//glUniformMatrix4fv(shadow_program->getUniform("modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
+		glUniform3fv(shadow_program->getUniform("color"), 1, glm::value_ptr(model_colors.at(i)));
+		glUniformMatrix4fv(shadow_program->getUniform("modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
+		glUniformMatrix4fv(shadow_program->getUniform("modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
 
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glDrawArrays(GL_TRIANGLES, 0, model->getNVertices());
 	}
-	
-
+	*/
 	/**
 	* Render model
 	* Create modelview matrix and normal matrix and set as input
 	*/
-	
+	shadow_program->disuse();
 	
 	//shadow_fbo->unbind();
 	
@@ -402,10 +500,16 @@ void GameManager::render() {
 	light.position = glm::mat3(rotation)*light.position;
 	light.view = glm::lookAt(light.position,  glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
-	//renderShadowPass();
-	renderColorPass();
+	renderShadowPass();
+	//renderColorPass();  // REMEMBER TO UNCOMMENT
 	
-	CHECK_GL_ERRORS();
+	try
+	{
+		CHECK_GL_ERRORS();
+	} catch(std::runtime_error &e)
+	{
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
 }
 
 void GameManager::play() {
@@ -478,6 +582,7 @@ void GameManager::zoomOut() {
 void GameManager::phong_rendering()
 {
 	m_rendering_mode = RENDERING_MODE_PHONG;
+
 }
 
 void GameManager::wireframe_rendering()

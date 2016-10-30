@@ -1,4 +1,4 @@
-#version 150
+#version 330
 
 uniform vec3 color;
 smooth in vec3 f_n;
