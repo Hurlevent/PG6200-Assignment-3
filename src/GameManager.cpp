@@ -244,6 +244,7 @@ void GameManager::init() {
 	std::cout << "INIT before phong-compile and linking" << std::endl;
 
 	//Create the programs we will use
+
 	phong_program.reset(new Program("shaders/phong.vert", "shaders/phong.geom", "shaders/phong.frag"));
 
 	CHECK_GL_ERRORS();
@@ -251,7 +252,6 @@ void GameManager::init() {
 	std::cout << "INIT before shadow-compile and linking" << std::endl;
 
 	shadow_program.reset(new Program("shaders/shadow.vert", "shaders/shadow.frag"));
-	
 	CHECK_GL_ERRORS();
 
 	std::cout << "INIT after shadow-compile and linking" << std::endl;
@@ -317,7 +317,46 @@ void GameManager::init() {
 	*/
 	CHECK_GL_ERRORS();
 	std::cout << "END OF INIT " << std::endl;
+
+	initFBOProgramAndVAO();
 }
+
+void GameManager::initFBOProgramAndVAO()
+{
+	std::cout << "init FBO PRogram and VAO" << std::endl;
+	try {
+		fbo_program.reset(new Program("shaders/fbo.vert", "shaders/fbo.frag"));
+		fbo_program->use();
+		std::cout << "About to get uniform" << std::endl;
+		glUniform1i(fbo_program->getUniform("fbo_texture"), 0); // Yes, 0 is correct
+ 		std::cout << "Done setting uniform" << std::endl;
+		glGenVertexArrays(1, &fbo_vao);
+
+		glBindVertexArray(fbo_vao);
+
+		static float positions[8] = {
+			-1.0, 1.0,
+			-1.0, -1.0,
+			1.0, 1.0,
+			1.0, -1.0
+		};
+
+		glGenBuffers(1, &fbo_vertex_bo);
+		glBindBuffer(GL_ARRAY_BUFFER, fbo_vertex_bo);
+		glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(float), &positions[0], GL_STATIC_DRAW);
+
+		std::cout << "about to set in_Positions" << std::endl;
+		fbo_program->setAttributePointer("in_Position", 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+		std::cout << "done setting in_Positions" << std::endl;
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	} catch(std::runtime_error &error)
+	{
+		std::cerr << "Exception in initing FBOProgram and VAO: \n" << error.what() << std::endl;
+	}
+	CHECK_GL_ERRORS();
+}
+
 
 void GameManager::renderColorPass() {
 	glViewport(0, 0, window_width, window_height); // WHAT THE HELL IS A VIEWPORT?
@@ -421,77 +460,46 @@ void GameManager::renderShadowPass() {
 
 	glViewport(0, 0, shadow_map_width, shadow_map_height); // What the hell is a viewport???
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // WTF????
+	shadow_fbo->bind();
 
-	glm::mat4 view_matrix_new = camera.view*cam_trackball.getTransform(); // Camera view matrix
-
-	
-	//shadow_fbo->bind();
+	shadow_program->use();
 
 	// Implement rendering to textures here, maybe even create different shader programs and switch to them, in order to render the shadow maps
 	// Everything that is rendered when shadow_fbo is binded, should be rendered to the fbo, rather than the screen.
 
+	glClear(GL_DEPTH_BUFFER_BIT);
 
-	//phong_program->use();
-	shadow_program->use();
+	model->getVertices()->bind();
 
+	shadow_program->setAttributePointer("position", 3);
 
-	/*
-			HVA VI MÅ GJØRE!!
-			1. Vi må finne ut rettningen som lyset peker i.
-			2. Så må vi transformere lyset hen til kameraet.
-	*/
+	glm::mat4 transform;
 
+	for (int i = 0; i < n_models; ++i)
 	{
-		glBindVertexArray(vao[1]);
-
-		glm::mat4 model_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(cube_scale)); // Så vi lager en matrise som er
-		//std::cout << GLUtils::mat4ToString(model_matrix).c_str() << std::endl;
-		glm::mat4 model_matrix_inverse = glm::inverse(model_matrix);
-		//std::cout << GLUtils::mat4ToString(model_matrix_inverse).c_str() << std::endl;
-		glm::mat4 modelview_matrix = view_matrix_new*model_matrix;
-		glm::mat4 modelview_matrix_inverse = glm::inverse(modelview_matrix);
-		glm::mat4 modelviewprojection_matrix = camera.projection*modelview_matrix;
-		glm::vec3 light_pos = glm::mat3(model_matrix_inverse)*light.position / model_matrix_inverse[3].w;
-
-		glm::mat4 light_model_view_projection = light.projection * light.view * glm::mat4(1.0);
-		std::cout << GLUtils::mat4ToString(light_model_view_projection).c_str() << std::endl;
-
-		glProgramUniformMatrix4fv(shadow_program->name, shadow_program->getUniform("light_transform"), 1, GL_FALSE, glm::value_ptr(light_model_view_projection));
-		//glProgramUniformMatrix4fv(shadow_program->name, shadow_program->getUniform("light_transform"), 1, GL_FALSE, glm::value_ptr(light.position));
-		//glProgramUniformMatrix4fv(shadow_program->name, shadow_program->getUniform("modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
-		//glUniformMatrix4fv(shadow_program->getUniform("modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
-
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-	}
-	
-	/*
-	for (int i = 0; i<n_models; ++i) {
-		glm::mat4 model_matrix = model_matrices.at(i);
-		glm::mat4 model_matrix_inverse = glm::inverse(model_matrix);
-		glm::mat4 modelview_matrix = view_matrix_new*model_matrix;
-		glm::mat4 modelview_matrix_inverse = glm::inverse(modelview_matrix);
-		glm::mat4 modelviewprojection_matrix = camera.projection*modelview_matrix;
-		glm::vec3 light_pos = glm::mat3(model_matrix_inverse)*light.position / model_matrix_inverse[3].w;
-
-		glUniform3fv(shadow_program->getUniform("light_pos"), 1, glm::value_ptr(light_pos));
-		glUniform3fv(shadow_program->getUniform("color"), 1, glm::value_ptr(model_colors.at(i)));
-		glUniformMatrix4fv(shadow_program->getUniform("modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
-		glUniformMatrix4fv(shadow_program->getUniform("modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
-
+		transform = light.projection * light.view * model_matrices.at(i); // Nå transformerer vi alle kaninene inn i lyset's clip space
+		glUniformMatrix4fv(shadow_program->getUniform("light_transform"), 1, 0, glm::value_ptr(transform));
 		glDrawArrays(GL_TRIANGLES, 0, model->getNVertices());
 	}
-	*/
-	/**
-	* Render model
-	* Create modelview matrix and normal matrix and set as input
-	*/
+
 	shadow_program->disuse();
-	
-	//shadow_fbo->unbind();
+	shadow_fbo->unbind();
 	
 
 }
+
+void GameManager::renderFBO()
+{
+	glBindVertexArray(fbo_vao);
+	fbo_program->use();
+
+	glBindTexture(GL_TEXTURE_2D, shadow_fbo->getTexture());
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	
+	fbo_program->disuse();
+	glBindVertexArray(0);
+}
+
 
 void GameManager::render() {
 	//Rotate the light a bit
@@ -503,6 +511,7 @@ void GameManager::render() {
 	renderShadowPass();
 	//renderColorPass();  // REMEMBER TO UNCOMMENT
 	
+	renderFBO();
 	try
 	{
 		CHECK_GL_ERRORS();
