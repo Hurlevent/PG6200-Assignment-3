@@ -105,6 +105,8 @@ private:
 	void wireframe_rendering();
 	void hiddenline_rendering();
 
+	void initCubeMap();
+
 	GLuint fbo_vao;
 
 	GLuint fbo_vertex_bo;

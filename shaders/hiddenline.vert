@@ -1,9 +1,9 @@
 #version 330
 
-uniform vec4 projection_matrix;
-uniform vec4 modelview_matrix;
-uniform vec3 normal_matrix;
-uniform vec3 light_pos;
+uniform mat4 hiddenline_projection_matrix;
+uniform mat4 hiddenline_modelview_matrix_inverse;
+uniform mat4 hiddenline_light_transform;
+uniform vec3 hiddenline_light_pos;
 
 in vec3 position;
 in vec3 normal;
@@ -12,12 +12,29 @@ smooth out vec3 g_v;
 smooth out vec3 g_l;
 smooth out vec3 g_n;
 
+out vec4 crd;
+out vec3 cube_map_coord;
+
 void main(){
-	vec4 pos = modelview_matrix * vec4(position, 1.0);
+	float homogeneous_divide = (1.0f/hiddenline_modelview_matrix_inverse[3].w);
+	vec3 cam_pos_world = hiddenline_modelview_matrix_inverse[3].xyz*homogeneous_divide;
+
+	/*
+	vec4 pos = hiddenline_modelview_matrix * vec4(position, 1.0);
 
 	g_v = normalize(-pos.xyz);
-	g_l = normalize(light_pos - pos.xyz);
-	g_n = normal_matrix * normal;
+	g_l = normalize(hiddenline_light_pos - pos.xyz);
+	g_n = normalize(normal);
+	*/
 
-	gl_Position = projection_matrix * pos;
+
+	g_v = normalize(cam_pos_world - position);
+	g_l = normalize(hiddenline_light_pos - position);
+	g_n = normalize(normal);
+
+	crd = hiddenline_light_transform * vec4(position, 1.0);
+
+	cube_map_coord = position.xyz;
+
+	gl_Position = hiddenline_projection_matrix * vec4(position, 1.0);
 }

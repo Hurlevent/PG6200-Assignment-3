@@ -1,9 +1,11 @@
 #version 330
 
-uniform mat4 light_transform;
+uniform mat4 shadow_light_transform;
+
+
 
 in vec3 position;
 
 void main() {
-	gl_Position = light_transform * vec4(position, 1.0);
+	gl_Position = shadow_light_transform * vec4(position, 1.0);
 }
