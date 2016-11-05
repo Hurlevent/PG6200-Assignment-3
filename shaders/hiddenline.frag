@@ -1,4 +1,4 @@
-#version 330
+#version 150
 
 uniform vec3 hiddenline_color;
 uniform sampler2D hiddenline_shadow_map;

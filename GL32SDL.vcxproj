@@ -41,6 +41,9 @@
     <None Include="shaders\phong.vert" />
     <None Include="shaders\shadow.frag" />
     <None Include="shaders\shadow.vert" />
+    <None Include="shaders\wireframe.frag" />
+    <None Include="shaders\wireframe.geom" />
+    <None Include="shaders\wireframe.vert" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0EB6082A-7B48-4E60-B4B3-2EB3C7254AC1}</ProjectGuid>

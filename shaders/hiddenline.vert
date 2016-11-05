@@ -1,4 +1,4 @@
-#version 330
+#version 150
 
 uniform mat4 hiddenline_projection_matrix;
 uniform mat4 hiddenline_modelview_matrix_inverse;

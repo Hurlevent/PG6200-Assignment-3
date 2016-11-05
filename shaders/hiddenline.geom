@@ -1,4 +1,4 @@
-#version 330
+#version 150
  
 
 layout(triangles) in;
@@ -68,42 +68,3 @@ void main(){
 	EndPrimitive();
 }
 
-/*
-void main(){
-	float sum_of_x = g_v[0].x + g_v[1].x + g_v[2].x;
-	float sum_of_y = g_v[0].y + g_v[1].y + g_v[2].y;
-	float sum_of_z = g_v[0].z + g_v[1].z + g_v[2].z;
-
-	vec3 cog = vec3(sum_of_x / 3.0f, sum_of_y / 3.0f, sum_of_z / 3.0f);
-
-	for(int i = 0; i < gl_in.length(); i++){
-		f_n = g_n[i];
-		f_v = g_v[i];
-		f_l = g_l[i];
-
-		f_c = hiddenline_color;
-
-		vec4 v0 = vec4(normalize(cog - f_v), 1.0f);
-
-		gl_Position = gl_in[i].gl_Position + 0.02*v0;
-		EmitVertex();
-	}
-	EndPrimitive();
-
-
-
-	for(int i = 0; i < gl_in.length(); i++){
-		f_n = g_n[i];
-		f_v = g_v[i];
-		f_l = g_l[i];
-
-		f_c = vec3(0.0);
-
-		mat4 reposition_matrix = mat4(vec4(1.0, 0.0, 0.0, 0.0), vec4(0.0, 1.0, 0.0, 0.0), vec4(0.0, 0.0, 1.0, 0.0), vec4(0.0, 0.0, 0.1f, 1.0));
-
-		gl_Position = reposition_matrix * gl_in[i].gl_Position;
-		EmitVertex();
-	}
-	EndPrimitive();
-}
-*/

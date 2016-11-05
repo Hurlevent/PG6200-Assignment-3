@@ -1,8 +1,6 @@
-#version 330
+#version 150
 
 uniform mat4 shadow_light_transform;
-
-
 
 in vec3 position;
 

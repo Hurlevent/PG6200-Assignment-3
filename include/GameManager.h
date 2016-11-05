@@ -111,9 +111,11 @@ private:
 	GLuint fbo_vertex_bo;
 
 	int m_rendering_mode;
+
+	bool m_display_shadow_map;
 	
 	GLuint vao[2]; //< Vertex array objects
-	std::shared_ptr<GLUtils::Program> phong_program, wireframe_program, exploded_view_program, shadow_program, hiddenline_program, fbo_program;
+	std::shared_ptr<GLUtils::Program> phong_program, wireframe_program, exploded_view_program, shadow_program, hiddenline_program, fbo_program; // exploded_view_program is not in use
 	std::shared_ptr<GLUtils::CubeMap> diffuse_cubemap;
 	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > cube_vertices, cube_normals;
 

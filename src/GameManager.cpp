@@ -129,8 +129,8 @@ inline void checkSDLError(int line = -1) {
 #endif
 }
 
-
-GameManager::GameManager() : m_rendering_mode(RENDERING_MODE_PHONG) {
+//			----	CONTRUCTOR	----
+GameManager::GameManager() : m_rendering_mode(RENDERING_MODE_PHONG), m_display_shadow_map(false) {
 	my_timer.restart();
 	zoom = 1;
 	light.position = glm::vec3(10, 0, 0);
@@ -287,6 +287,14 @@ void GameManager::init() {
 #endif
 
 	fbo_program.reset(new Program("shaders/fbo.vert", "shaders/fbo.frag"));
+
+#ifdef _DEBUG
+	std::cout << "Checking for errors..." << std::endl;
+	CHECK_GL_ERRORS();
+	std::cout << "Attempting to compile wireframe-program..." << std::endl;
+#endif
+
+	wireframe_program.reset(new Program("shaders/wireframe.vert", "shaders/wireframe.geom", "shaders/wireframe.frag"));
 	
 #ifdef _DEBUG
 	std::cout << "Checking for errors..." << std::endl;
@@ -455,7 +463,10 @@ void GameManager::renderColorPass() {
 		if (m_rendering_mode == RENDERING_MODE_WIREFRAME)
 		{	
 			// Changeing to wireframe rendering here!
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+			phong_program->disuse();
+			wireframe_program->use();
 		}
 		else
 		{
@@ -523,10 +534,16 @@ void GameManager::renderColorPass() {
 			glProgramUniform3fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_color"), 1, glm::value_ptr(glm::vec3(1.0f, 0.8f, 0.8f)));
 			glProgramUniform1i(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_shadow_map"), 0);
 			glProgramUniform1i(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_cube_map"), 1);
-#ifdef _DEBUG
-			CHECK_GL_ERRORS();
-#endif
+
 		}
+		else if (m_rendering_mode == RENDERING_MODE_WIREFRAME) {
+			// setting all uniforms for wireframe-program
+			glProgramUniformMatrix4fv(wireframe_program->name, wireframe_program->getUniform("wireframe_projection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
+		}
+
+#ifdef _DEBUG
+		CHECK_GL_ERRORS();
+#endif
 
 		glDrawArrays(GL_TRIANGLES, 0, model->getNVertices());
 	}
@@ -543,7 +560,9 @@ void GameManager::renderColorPass() {
 	{
 		if (m_rendering_mode == RENDERING_MODE_WIREFRAME)
 		{
-			glPolygonMode(GL_FRONT, GL_FILL);
+			//glPolygonMode(GL_FRONT, GL_FILL);
+			wireframe_program->disuse();
+			phong_program->use();
 		}
 		else
 		{
@@ -594,15 +613,27 @@ void GameManager::renderShadowPass() {
 
 void GameManager::renderFBO()
 {
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	glBindVertexArray(fbo_vao);
 	fbo_program->use();
+
+	glm::mat3 fbo_transform = glm::mat3(glm::vec3(0.5, 0.0, 0.0), glm::vec3(0.0, 0.5, 0.0), glm::vec3(0.5, -0.5, 0.5));
+
+	glProgramUniformMatrix3fv(fbo_program->name, fbo_program->getUniform("fbo_transform"), 1, 0, glm::value_ptr(fbo_transform));
 
 	glBindTexture(GL_TEXTURE_2D, shadow_fbo->getTexture());
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	fbo_program->disuse();
 	glBindVertexArray(0);
+
+	glDisable(GL_BLEND);
+
+#ifdef _DEBUG
+	CHECK_GL_ERRORS();
+#endif
 }
 
 
@@ -619,6 +650,9 @@ void GameManager::render() {
 	// Render the screen!
 	renderColorPass(); 
 	
+	if (m_display_shadow_map) {
+		renderFBO();
+	}
 }
 
 void GameManager::play() {
@@ -660,6 +694,9 @@ void GameManager::play() {
 					break;
 				case SDLK_3:
 					hiddenline_rendering();
+					break;
+				case SDLK_t:
+					m_display_shadow_map = !m_display_shadow_map;
 					break;
 				}
 				break;

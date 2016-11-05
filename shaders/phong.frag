@@ -1,4 +1,4 @@
-#version 330
+#version 150
 
 uniform vec3 phong_color;
 uniform sampler2D phong_shadow_map;
@@ -31,9 +31,10 @@ void main() {
 	float bias = 0.005f;	
 
 	bool shadow = false;
-	if(texture_coord.x >= 0 && texture_coord.x < texture_coord.w && texture_coord.y >= 0 && texture_coord.y < texture_coord.w)
+	if(texture_coord.x > 0 && texture_coord.x < texture_coord.w &&
+	 texture_coord.y > 0 && texture_coord.y < texture_coord.w)
 	{
-		shadow = (textureProj(phong_shadow_map, texture_coord).z < (texture_coord.z - bias)/texture_coord.w);
+		shadow = textureProj(phong_shadow_map, texture_coord).z < (texture_coord.z - bias)/texture_coord.w;
 	}
 
 	if(shadow)

@@ -27,7 +27,7 @@ ShadowFBO::ShadowFBO(unsigned int width, unsigned int height) {
 	glDrawBuffer(GL_NONE);
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, texture, 0);
 
-	glClear(GL_DEPTH_BUFFER_BIT);;
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
