@@ -19,15 +19,6 @@ void main(){
 	float homogeneous_divide = (1.0f/hiddenline_modelview_matrix_inverse[3].w);
 	vec3 cam_pos_world = hiddenline_modelview_matrix_inverse[3].xyz*homogeneous_divide;
 
-	/*
-	vec4 pos = hiddenline_modelview_matrix * vec4(position, 1.0);
-
-	g_v = normalize(-pos.xyz);
-	g_l = normalize(hiddenline_light_pos - pos.xyz);
-	g_n = normalize(normal);
-	*/
-
-
 	g_v = normalize(cam_pos_world - position);
 	g_l = normalize(hiddenline_light_pos - position);
 	g_n = normalize(normal);

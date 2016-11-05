@@ -135,15 +135,6 @@ GameManager::GameManager() : m_rendering_mode(RENDERING_MODE_PHONG) {
 	zoom = 1;
 	light.position = glm::vec3(10, 0, 0);
 
-	shadow_map_model.vertices = {
-		-0.5f, -0.5f, 0.5f,
-		-0.5f, 0, 0.5f,
-		0, -0.5f, 0.5f,
-		0, -0.5f, 0.5f,
-		0, 0, 0.5f,
-		-0.5f, 0, 0.5f
-	};
-	shadow_map_model.normal = glm::vec3(0,0,1.0f);
 }
 
 GameManager::~GameManager() {
@@ -212,13 +203,29 @@ void GameManager::init() {
 	ilInit();
 	iluInit();
 
-	//Initialize the different stuff we need
+	//////////////////////////////////////////
+	///	INITIALIZING OBJECTS THAT WE NEED  ///
+	//////////////////////////////////////////
+
 	model.reset(new Model("models/bunny.obj", false));
+
 	cube_vertices.reset(new BO<GL_ARRAY_BUFFER>(cube_vertices_data, sizeof(cube_vertices_data)));
 	cube_normals.reset(new BO<GL_ARRAY_BUFFER>(cube_normals_data, sizeof(cube_normals_data)));
-
-	shadow_map_model.vbo.reset(new BO<GL_ARRAY_BUFFER>(shadow_map_model.vertices.data(), sizeof(shadow_map_model.vertices.data())));
 	
+	shadow_fbo.reset(new ShadowFBO(shadow_map_width, shadow_map_height));
+
+	diffuse_cubemap.reset(new GLUtils::CubeMap("cubemaps/diffuse/", "jpg"));
+
+#ifdef _DEBUG
+	CHECK_GL_ERRORS();
+#endif
+
+	//////////////////////////////////////////////////////
+	////	INITIALIZING CAMERA AND LIGHT MATRICES	 /////
+	//////////////////////////////////////////////////////
+
+
+
 	//Set the matrices we will use
 	camera.projection = glm::perspective(fovy/zoom,
 			window_width / (float) window_height, near_plane, far_plane);
@@ -227,7 +234,12 @@ void GameManager::init() {
 	light.projection = glm::perspective(90.0f, 1.0f, near_plane, far_plane);
 	light.view = glm::lookAt(light.position, glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
-	//Create the random transformations and colors for the bunnys
+	
+	////////////////////////////////////////////////////////////////////////////////////
+	////		Createing the random transformations and colors for the bunnys		////
+	////////////////////////////////////////////////////////////////////////////////////
+
+
 	srand(static_cast<int>(time(NULL)));
 	for (int i=0; i<n_models; ++i) {
 		float tx = rand() / (float) RAND_MAX - 0.5f;
@@ -241,69 +253,89 @@ void GameManager::init() {
 		model_colors.push_back(glm::vec3(tx+0.5, ty+0.5, tz+0.5));
 	}
 
-	std::cout << "INIT before phong-compile and linking" << std::endl;
 
-	//Create the programs we will use
+	//////////////////////////////////////////////////////
+	//// START OF SHADER PROGRAM COMPILATION STAGE	  ////
+	//////////////////////////////////////////////////////
 
+#ifdef _DEBUG
+	std::cout << "Attempting to compile phong-program..." << std::endl;
+#endif
+	
 	phong_program.reset(new Program("shaders/phong.vert", "shaders/phong.geom", "shaders/phong.frag"));
 
+#ifdef _DEBUG
+	std::cout << "Checking for errors..." << std::endl;
 	CHECK_GL_ERRORS();
-	std::cout << "INIT after phong-compile and linking" << std::endl;
-
-
-	CHECK_GL_ERRORS();
-
-	std::cout << "INIT before shadow-compile and linking" << std::endl;
+	std::cout << "Attempting to compile shadow-program..." << std::endl;
+#endif
 
 	shadow_program.reset(new Program("shaders/shadow.vert", "shaders/shadow.frag"));
-	CHECK_GL_ERRORS();
 
-	std::cout << "INIT after shadow-compile and linking" << std::endl;
-	try
-	{
-		hiddenline_program.reset(new Program("shaders/hiddenline.vert", "shaders/hiddenline.geom", "shaders/hiddenline.frag"));
-	} catch(std::runtime_error &e)
-	{
-		std::cerr << "Failed to compile+link hiddenline program: " << e.what() << std::endl;
-	}
+#ifdef _DEBUG
+	std::cout << "Checking for errors..." << std::endl;
+	CHECK_GL_ERRORS();
+	std::cout << "Attempting to compile hiddenline-program..." << std::endl;
+#endif
+
+	hiddenline_program.reset(new Program("shaders/hiddenline.vert", "shaders/hiddenline.geom", "shaders/hiddenline.frag"));
+
+#ifdef _DEBUG
+	std::cout << "Checking for errors..." << std::endl;
+	CHECK_GL_ERRORS();
+	std::cout << "Attempting to compile fbo-program..." << std::endl;
+#endif
+
+	fbo_program.reset(new Program("shaders/fbo.vert", "shaders/fbo.frag"));
 	
-	std::cout << "INIT after hiddenline-compile and linking" << std::endl;
+#ifdef _DEBUG
+	std::cout << "Checking for errors..." << std::endl;
 	CHECK_GL_ERRORS();
+	std::cout << "All programs compiled successfully!" << std::endl;
+#endif
 
+	//////////////////////////////////////////////////////
+	////    END OF SHADER PROGRAM COMPILATION STAGE	  ////
+	//////////////////////////////////////////////////////
+	
+	
+	/*
 	//Set uniforms for the programs
 	//Typically diffuse_cubemap and shadowmap
 	phong_program->use();
 
-	/*
-		WE WILL HAVE TO WRITE CODE HERE!!!!
-	*/
 
 	phong_program->disuse();
 	CHECK_GL_ERRORS();
-	
-	// Initialize shadow_fbo
-	shadow_fbo.reset(new ShadowFBO(shadow_map_width, shadow_map_height));
+	*/
 
-	//Set up VAOs and set as input to shaders
-	glGenVertexArrays(3, &vao[0]);
-	glBindVertexArray(vao[0]);
+
+	//////////////////////////////////////////////
+	////   START OF VAO INITIALIZING  STAGE	  ////
+	//////////////////////////////////////////////
+
+	// Generating 2 VAOS!
+	glGenVertexArrays(2, &vao[0]);
+	
+	glBindVertexArray(vao[0]); 
+
+	// Sending our mesh as input to our shaders
 	model->getVertices()->bind();
-	phong_program->setAttributePointer("position", 3);
-	std::cout << "INIT Before setAttribPointer position for shadow program" << std::endl;
-	shadow_program->setAttributePointer("position", 3);
-	std::cout << "INIT After setAttribPointer position for shadow program" << std::endl;
+
+	phong_program->setAttributePointer("position", 3); // Phong program needs access to the vertices
+
+	shadow_program->setAttributePointer("position", 3); // Shadow program needs access to the vertices
 
 	model->getNormals()->bind();
-	phong_program->setAttributePointer("normal", 3);
-	//std::cout << "INIT Before setAttribPointer normals for shadow program" << std::endl;
-	//shadow_program->setAttributePointer("normal", 3);
-	//std::cout << "INIT After setAttribPointer normals for shadow program" << std::endl;
+
+	phong_program->setAttributePointer("normal", 3); // Phong program needs access to the normals
+	
 	model->getVertices()->unbind(); //Unbinds both vertices and normals
-	glBindVertexArray(0);
-	
-	
 
 	glBindVertexArray(vao[1]);
+
+	// Sending out walls as input to our phong-shader
+	
 	cube_vertices->bind();
 	phong_program->setAttributePointer("position", 3);
 	
@@ -311,25 +343,36 @@ void GameManager::init() {
 	phong_program->setAttributePointer("normal", 3);
 	
 	model->getVertices()->unbind(); //Unbinds both vertices and normals
+
 	glBindVertexArray(0);
 
+#ifdef _DEBUG
 	CHECK_GL_ERRORS();
-	std::cout << "END OF INIT " << std::endl;
+#endif
 
-	initFBOProgramAndVAO();
-	initCubeMap();
+	// Generating a third VAO for our fbo-program
+	glGenVertexArrays(1, &fbo_vao);
+	
+	init_fbo(); // Initialize our fbo
+
+
+	////////////////////////////////////////////////
+	////     END OF VAO INITIALIZING STAGE	   ////
+	///////////////////////////////////////////////
+
+	//initCubeMap();
+
+#ifdef _DEBUG
+	std::cout << "All resources has been initialized..." << std::endl;
+	CHECK_GL_ERRORS();
+#endif
 }
 
-void GameManager::initFBOProgramAndVAO()
+void GameManager::init_fbo()
 {
-	std::cout << "init FBO PRogram and VAO" << std::endl;
-	try {
-		fbo_program.reset(new Program("shaders/fbo.vert", "shaders/fbo.frag"));
 		fbo_program->use();
-		std::cout << "About to get uniform" << std::endl;
-		glUniform1i(fbo_program->getUniform("fbo_texture"), 0); // Yes, 0 is correct
- 		std::cout << "Done setting uniform" << std::endl;
-		glGenVertexArrays(1, &fbo_vao);
+	
+		glUniform1i(fbo_program->getUniform("fbo_texture"), 0); 
 
 		glBindVertexArray(fbo_vao);
 
@@ -344,109 +387,102 @@ void GameManager::initFBOProgramAndVAO()
 		glBindBuffer(GL_ARRAY_BUFFER, fbo_vertex_bo);
 		glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), &positions[0], GL_STATIC_DRAW);
 
-		std::cout << "about to set in_Positions" << std::endl;
 		fbo_program->setAttributePointer("in_Position", 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-		std::cout << "done setting in_Positions" << std::endl;
+		
 		glBindVertexArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
-	} catch(std::runtime_error &error)
-	{
-		std::cerr << "Exception in initing FBOProgram and VAO: \n" << error.what() << std::endl;
-	}
-	CHECK_GL_ERRORS();
-}
 
-void GameManager::initCubeMap() {
-	diffuse_cubemap.reset(new GLUtils::CubeMap("cubemaps/diffuse/", "jpg"));
-	
+#ifdef _DEBUG
 	CHECK_GL_ERRORS();
+#endif
 }
-
-glm::mat4 T = glm::mat4(
-	0.5f, 0.0f, 0.0f, 0.0f,
-	0.0f, 0.5f, 0.0f, 0.0f,
-	0.0f, 0.0f, 0.5f, 0.0f,
-	0.5f, 0.5f, 0.5f, 1.0f
-);
 
 
 void GameManager::renderColorPass() {
-	glViewport(0, 0, window_width, window_height); 
-	glBindFramebufferEXT(GL_FRAMEBUFFER, 0); // Make sure that we are rendering to screen
+	
+	glViewport(0, 0, window_width, window_height);
+
+	// Makeing sure that we are rendering to screen
+	glBindFramebufferEXT(GL_FRAMEBUFFER, 0); 
 
 	//Create the new view matrix that takes the trackball view into account
 	glm::mat4 view_matrix_new = camera.view*cam_trackball.getTransform();
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//phong_program->use();
-	//Bind shadow map and diffuse cube map
 
-	/**
-	  * Render cube
-	  */ 
+	phong_program->use(); 
 
-	phong_program->use();
+	// Binding all textures that we'll be using
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, shadow_fbo->getTexture());
 
 	diffuse_cubemap->bindTexture(GL_TEXTURE1);
 
-	{
-		glBindVertexArray(vao[1]);
+	/////////////////////////////////////////////////////////
+	/////		START OF RENDERING STEP FOR THE WALLS	/////
+	/////////////////////////////////////////////////////////
 
-		glm::mat4 model_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(cube_scale)); // Ok, så vi lager en identitetsmatrise som er skalert med 22.5
-		glm::mat4 model_matrix_inverse = glm::inverse(model_matrix); // WTF???
-		glm::mat4 modelview_matrix = view_matrix_new*model_matrix;
-		glm::mat4 modelview_matrix_inverse = glm::inverse(modelview_matrix);
-		glm::mat4 modelviewprojection_matrix = camera.projection*modelview_matrix;
-		glm::vec3 light_pos = glm::mat3(model_matrix_inverse)*light.position/model_matrix_inverse[3].w; // HVA GJØR DENNE FORMELEN??
+	glBindVertexArray(vao[1]);
 
-		glUniform3fv(phong_program->getUniform("phong_light_pos"), 1, glm::value_ptr(light_pos));
-		glUniform3fv(phong_program->getUniform("phong_color"), 1, glm::value_ptr(glm::vec3(1.0f, 0.8f, 0.8f)));
-		glUniformMatrix4fv(phong_program->getUniform("phong_modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
-		glUniformMatrix4fv(phong_program->getUniform("phong_modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
+	glm::mat4 model_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(cube_scale)); 
+	glm::mat4 model_matrix_inverse = glm::inverse(model_matrix); 
+	glm::mat4 modelview_matrix = view_matrix_new*model_matrix;
+	glm::mat4 modelview_matrix_inverse = glm::inverse(modelview_matrix);
+	glm::mat4 modelviewprojection_matrix = camera.projection*modelview_matrix;
+	glm::vec3 light_pos = glm::mat3(model_matrix_inverse)*light.position/model_matrix_inverse[3].w; 
+
+	// setting uniforms for phong-program
+	glUniform3fv(phong_program->getUniform("phong_light_pos"), 1, glm::value_ptr(light_pos));
+	glUniform3fv(phong_program->getUniform("phong_color"), 1, glm::value_ptr(glm::vec3(1.0f, 0.8f, 0.8f)));
+	glUniformMatrix4fv(phong_program->getUniform("phong_modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
+	glUniformMatrix4fv(phong_program->getUniform("phong_modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
 		
-		glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_shadow_map"), 0);
-		glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_cube_map"), 1);
-		/*
-		glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_projection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
-		glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_modelview_matrix"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
-		glProgramUniform3fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_light_pos"), 1, glm::value_ptr(light_pos));
+	glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_shadow_map"), 0);
+	glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_cube_map"), 1);
 
-		glProgramUniform3fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_color"), 1, glm::value_ptr(glm::vec3(1.0f, 0.8f, 0.8f)));
-		glProgramUniform1i(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_shadow_map"), 0);
-		glProgramUniform1i(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_cube_map"), 1);
-		*/
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+	
+	/////////////////////////////////////////////////////////
+	/////		END OF RENDERING STEP FOR THE WALLS		/////
+	/////////////////////////////////////////////////////////
 
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-	}
 
-	/**
-	  * Render model
-	  * Create modelview matrix and normal matrix and set as input
-	  */
-
+	// check if we'll not be using regular phong shading
 	if (m_rendering_mode)
 	{
 		if (m_rendering_mode == RENDERING_MODE_WIREFRAME)
-		{
+		{	
+			// Changeing to wireframe rendering here!
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		}
 		else
 		{
-			// Change to hidden line here!
+			// Changeing to hidden line here!
 			phong_program->disuse();
-			std::cout << "About to use hiddenline_program: " << hiddenline_program->name << std::endl;
+			
 			hiddenline_program->use();
-			std::cout << "Using hiddenline_program" << std::endl;
 
 		}
 	}
 
+#ifdef _DEBUG
 	CHECK_GL_ERRORS();
+#endif
+
+	// Bias matrix for rendering shadows
+	glm::mat4 T = glm::mat4(
+		0.5f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.5f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.5f, 0.0f,
+		0.5f, 0.5f, 0.5f, 1.0f
+		);
 	
+	/////////////////////////////////////////////////////////
+	/////		START OF RENDERING STEP FOR THE MODELS	/////
+	/////////////////////////////////////////////////////////
+
 	glBindVertexArray(vao[0]);
 
 	for (int i=0; i<n_models; ++i) {
@@ -459,6 +495,7 @@ void GameManager::renderColorPass() {
 
 		glm::mat4 light_transform = T * light.projection * light.view * model_matrix;
 
+		// Setting all uniforms for phong-program
 		glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_shadow_map"), 0);
 		
 		glProgramUniform3fv(phong_program->name, phong_program->getUniform("phong_light_pos"), 1, glm::value_ptr(light_pos));
@@ -471,10 +508,12 @@ void GameManager::renderColorPass() {
 		glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_shadow_map"), 0);
 		glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_cube_map"), 1);
 
+#ifdef _DEBUG
 		CHECK_GL_ERRORS();
+#endif
 
-		//std::cout << "About to set uniforms for hiddenline program!" << std::endl;
 		if (m_rendering_mode == RENDERING_MODE_HIDDENLINE) {
+			// setting all uniforms for hiddenline-program
 			glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_projection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
 			glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
 			glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_light_transform"), 1, 0, glm::value_ptr(light_transform));
@@ -484,12 +523,17 @@ void GameManager::renderColorPass() {
 			glProgramUniform3fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_color"), 1, glm::value_ptr(glm::vec3(1.0f, 0.8f, 0.8f)));
 			glProgramUniform1i(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_shadow_map"), 0);
 			glProgramUniform1i(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_cube_map"), 1);
+#ifdef _DEBUG
+			CHECK_GL_ERRORS();
+#endif
 		}
-
-		//std::cout << "Done setting uniforms for hiddenline program!" << std::endl;
 
 		glDrawArrays(GL_TRIANGLES, 0, model->getNVertices());
 	}
+
+	/////////////////////////////////////////////////////////
+	/////		END OF RENDERING STEP FOR THE MODELS	/////
+	/////////////////////////////////////////////////////////
 
 	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -509,20 +553,20 @@ void GameManager::renderColorPass() {
 	}
 
 	phong_program->disuse();
+
+#ifdef _DEBUG
+	CHECK_GL_ERRORS();
+#endif
 }
 
 void GameManager::renderShadowPass() {
 	//Render the scene from the light, with the lights projection, etc. into the shadow_fbo. Store only the depth values
-	//Remember to set the viewport, clearing the depth buffer, etc.
 
-	glViewport(0, 0, shadow_map_width, shadow_map_height); // What the hell is a viewport???
+	glViewport(0, 0, shadow_map_width, shadow_map_height);
 
 	shadow_fbo->bind();
 
 	shadow_program->use();
-
-	// Implement rendering to textures here, maybe even create different shader programs and switch to them, in order to render the shadow maps
-	// Everything that is rendered when shadow_fbo is binded, should be rendered to the fbo, rather than the screen.
 
 	glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -534,7 +578,7 @@ void GameManager::renderShadowPass() {
 
 	for (int i = 0; i < n_models; ++i)
 	{
-		transform = light.projection * light.view * model_matrices.at(i); // Nå transformerer vi alle kaninene inn i lyset's clip space
+		transform = light.projection * light.view * model_matrices.at(i); // This matrix will transform the models into the light's clip space
 		glUniformMatrix4fv(shadow_program->getUniform("shadow_light_transform"), 1, 0, glm::value_ptr(transform));
 		glDrawArrays(GL_TRIANGLES, 0, model->getNVertices());
 	}
@@ -542,6 +586,9 @@ void GameManager::renderShadowPass() {
 	shadow_program->disuse();
 	shadow_fbo->unbind();
 	
+#ifdef _DEBUG
+	CHECK_GL_ERRORS();
+#endif
 
 }
 
@@ -566,17 +613,12 @@ void GameManager::render() {
 	light.position = glm::mat3(rotation)*light.position;
 	light.view = glm::lookAt(light.position,  glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
+	// Create shadow-map first!
 	renderShadowPass();
-	renderColorPass();  // REMEMBER TO UNCOMMENT
+
+	// Render the screen!
+	renderColorPass(); 
 	
-	//renderFBO();
-	try
-	{
-		CHECK_GL_ERRORS();
-	} catch(std::runtime_error &e)
-	{
-		std::cerr << "Exception: " << e.what() << std::endl;
-	}
 }
 
 void GameManager::play() {

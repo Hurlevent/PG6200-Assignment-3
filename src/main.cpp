@@ -6,6 +6,7 @@
 #include <Windows.h>
 #endif
 
+
 /**
  * Simple program that starts our game manager
  */

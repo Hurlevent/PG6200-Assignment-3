@@ -12,6 +12,7 @@
 
 #include <GL/glew.h>
 
+
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 #define CHECK_GL_ERRORS() GLUtils::checkGLErrors(__FILE__, __LINE__)
 #define CHECK_GL_FBO_COMPLETENESS() GLUtils::checkGLFBOCompleteness(__FILE__, __LINE__)
@@ -38,6 +39,8 @@ inline void checkGLFBOCompleteness(const char* file, unsigned int line) {
 	}
 }
 
+// Just a function I made to help with debuging!
+#ifdef _DEBUG
 inline std::string mat4ToString(glm::mat4 matrix)
 {
 	std::stringstream ss;
@@ -47,7 +50,7 @@ inline std::string mat4ToString(glm::mat4 matrix)
 		<< matrix[0][3] << " " << matrix[1][3] << " " << matrix[2][3] << " " << matrix[3][3] << "\n";
 	return ss.str();
 }
-
+#endif
 
 }; //Namespace GLUtils
 
