@@ -5,8 +5,6 @@
 ShadowFBO::ShadowFBO(unsigned int width, unsigned int height) {
 	this->width = width;
 	this->height = height;
-	
-	//throw std::runtime_error("ShadowFBO not implemented yet...");
 
 	// Initialize Depth Texture
 

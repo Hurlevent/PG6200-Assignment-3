@@ -130,11 +130,12 @@ inline void checkSDLError(int line = -1) {
 }
 
 //			----	CONTRUCTOR	----
-GameManager::GameManager() : m_rendering_mode(RENDERING_MODE_PHONG), m_display_shadow_map(false) {
+GameManager::GameManager() : m_display_shadow_map(false) {
 	my_timer.restart();
 	zoom = 1;
 	light.position = glm::vec3(10, 0, 0);
 
+	render_model = &GameManager::phong_rendering;
 }
 
 GameManager::~GameManager() {
@@ -457,27 +458,6 @@ void GameManager::renderColorPass() {
 	/////////////////////////////////////////////////////////
 
 
-	// check if we'll not be using regular phong shading
-	if (m_rendering_mode)
-	{
-		if (m_rendering_mode == RENDERING_MODE_WIREFRAME)
-		{	
-			// Changeing to wireframe rendering here!
-			//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-			phong_program->disuse();
-			wireframe_program->use();
-		}
-		else
-		{
-			// Changeing to hidden line here!
-			phong_program->disuse();
-			
-			hiddenline_program->use();
-
-		}
-	}
-
 #ifdef _DEBUG
 	CHECK_GL_ERRORS();
 #endif
@@ -506,40 +486,8 @@ void GameManager::renderColorPass() {
 
 		glm::mat4 light_transform = T * light.projection * light.view * model_matrix;
 
-		// Setting all uniforms for phong-program
-		glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_shadow_map"), 0);
-		
-		glProgramUniform3fv(phong_program->name, phong_program->getUniform("phong_light_pos"), 1, glm::value_ptr(light_pos));
-		glProgramUniform3fv(phong_program->name, phong_program->getUniform("phong_color"), 1, glm::value_ptr(model_colors.at(i)));
-		
-		glProgramUniformMatrix4fv(phong_program->name, phong_program->getUniform("phong_modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
-		glProgramUniformMatrix4fv(phong_program->name, phong_program->getUniform("phong_modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
-		glProgramUniformMatrix4fv(phong_program->name, phong_program->getUniform("phong_light_transform"), 1, 0, glm::value_ptr(light_transform));
-		
-		glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_shadow_map"), 0);
-		glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_cube_map"), 1);
-
-#ifdef _DEBUG
-		CHECK_GL_ERRORS();
-#endif
-
-		if (m_rendering_mode == RENDERING_MODE_HIDDENLINE) {
-			// setting all uniforms for hiddenline-program
-			glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_projection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
-			glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
-			glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_light_transform"), 1, 0, glm::value_ptr(light_transform));
-
-			glProgramUniform3fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_light_pos"), 1, glm::value_ptr(light_transform));
-
-			glProgramUniform3fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_color"), 1, glm::value_ptr(glm::vec3(1.0f, 0.8f, 0.8f)));
-			glProgramUniform1i(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_shadow_map"), 0);
-			glProgramUniform1i(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_cube_map"), 1);
-
-		}
-		else if (m_rendering_mode == RENDERING_MODE_WIREFRAME) {
-			// setting all uniforms for wireframe-program
-			glProgramUniformMatrix4fv(wireframe_program->name, wireframe_program->getUniform("wireframe_projection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
-		}
+		// This function will render the models with the shader program that the user has chosen to use.
+		(this->*render_model)(glm::value_ptr(modelviewprojection_matrix), glm::value_ptr(modelview_matrix_inverse), glm::value_ptr(light_transform), glm::value_ptr(light_pos), i);
 
 #ifdef _DEBUG
 		CHECK_GL_ERRORS();
@@ -555,23 +503,8 @@ void GameManager::renderColorPass() {
 	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	diffuse_cubemap->unbindTexture();
-	
-	if(m_rendering_mode)
-	{
-		if (m_rendering_mode == RENDERING_MODE_WIREFRAME)
-		{
-			//glPolygonMode(GL_FRONT, GL_FILL);
-			wireframe_program->disuse();
-			phong_program->use();
-		}
-		else
-		{
-			hiddenline_program->disuse();
-			phong_program->use();
-		}
-	}
 
-	phong_program->disuse();
+	glUseProgram(0);
 
 #ifdef _DEBUG
 	CHECK_GL_ERRORS();
@@ -584,7 +517,6 @@ void GameManager::renderShadowPass() {
 	glViewport(0, 0, shadow_map_width, shadow_map_height);
 
 	shadow_fbo->bind();
-
 	shadow_program->use();
 
 	glClear(GL_DEPTH_BUFFER_BIT);
@@ -611,6 +543,7 @@ void GameManager::renderShadowPass() {
 
 }
 
+// This function displays the shadow_map in the lower left corner
 void GameManager::renderFBO()
 {
 	glEnable(GL_BLEND);
@@ -619,7 +552,7 @@ void GameManager::renderFBO()
 	glBindVertexArray(fbo_vao);
 	fbo_program->use();
 
-	glm::mat3 fbo_transform = glm::mat3(glm::vec3(0.5, 0.0, 0.0), glm::vec3(0.0, 0.5, 0.0), glm::vec3(0.5, -0.5, 0.5));
+	glm::mat3 fbo_transform = glm::mat3(glm::vec3(0.5, 0.0, 0.0), glm::vec3(0.0, 0.5, 0.0), glm::vec3(-0.5, -0.5, 0.5));
 
 	glProgramUniformMatrix3fv(fbo_program->name, fbo_program->getUniform("fbo_transform"), 1, 0, glm::value_ptr(fbo_transform));
 
@@ -687,13 +620,13 @@ void GameManager::play() {
 					zoomOut();
 					break;
 				case SDLK_1:
-					phong_rendering();
+					render_model = &GameManager::phong_rendering;
 					break;
 				case SDLK_2:
-					wireframe_rendering();
+					render_model = &GameManager::wireframe_rendering;
 					break;
 				case SDLK_3:
-					hiddenline_rendering();
+					render_model = &GameManager::hiddenline_rendering;
 					break;
 				case SDLK_t:
 					m_display_shadow_map = !m_display_shadow_map;
@@ -725,21 +658,48 @@ void GameManager::zoomOut() {
 			window_width / (float) window_height, near_plane, far_plane);
 }
 
-void GameManager::phong_rendering()
+void GameManager::phong_rendering(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration)
 {
-	m_rendering_mode = RENDERING_MODE_PHONG;
+	// Setting all uniforms for phong-program
+	glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_shadow_map"), 0);
 
+	glProgramUniform3fv(phong_program->name, phong_program->getUniform("phong_light_pos"), 1, light_pos);
+	glProgramUniform3fv(phong_program->name, phong_program->getUniform("phong_color"), 1, glm::value_ptr(model_colors.at(iteration)));
+
+	glProgramUniformMatrix4fv(phong_program->name, phong_program->getUniform("phong_modelviewprojection_matrix"), 1, 0, modelviewprojection);
+	glProgramUniformMatrix4fv(phong_program->name, phong_program->getUniform("phong_modelview_matrix_inverse"), 1, 0, modelview_inverse);
+	glProgramUniformMatrix4fv(phong_program->name, phong_program->getUniform("phong_light_transform"), 1, 0, light_transform);
+
+	glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_shadow_map"), 0);
+	glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_cube_map"), 1);
 }
 
-void GameManager::wireframe_rendering()
+void GameManager::wireframe_rendering(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration)
 {
-	// I might want to disable phong shading here!
-	m_rendering_mode = RENDERING_MODE_WIREFRAME;
+	wireframe_program->use();
+
+	phong_rendering(modelviewprojection, modelview_inverse, light_transform, light_pos, iteration);
+
+	// setting all uniforms for wireframe-program
+	glProgramUniformMatrix4fv(wireframe_program->name, wireframe_program->getUniform("wireframe_projection_matrix"), 1, 0, modelviewprojection);
 }
 
-void GameManager::hiddenline_rendering()
+void GameManager::hiddenline_rendering(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration)
 {
-	m_rendering_mode = RENDERING_MODE_HIDDENLINE;
+	hiddenline_program->use();
+
+	phong_rendering(modelviewprojection, modelview_inverse, light_transform, light_pos, iteration);
+
+	// setting all uniforms for hiddenline-program
+	glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_projection_matrix"), 1, 0, modelviewprojection);
+	glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_modelview_matrix_inverse"), 1, 0, modelview_inverse);
+	glProgramUniformMatrix4fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_light_transform"), 1, 0, light_transform);
+
+	glProgramUniform3fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_light_pos"), 1, light_pos); 
+	glProgramUniform3fv(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_color"), 1, glm::value_ptr(model_colors.at(iteration)));
+
+	glProgramUniform1i(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_shadow_map"), 0);
+	glProgramUniform1i(hiddenline_program->name, hiddenline_program->getUniform("hiddenline_cube_map"), 1);
 }
 
 

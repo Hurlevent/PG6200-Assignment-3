@@ -18,9 +18,6 @@
 #include "VirtualTrackball.h"
 #include "ShadowFBO.h"
 
-#define RENDERING_MODE_PHONG 0
-#define RENDERING_MODE_WIREFRAME 1
-#define RENDERING_MODE_HIDDENLINE 2
 
 /**
  * This class handles the game logic and display.
@@ -71,6 +68,10 @@ public:
 	  */
 	void renderColorPass();
 
+	/**
+	  *	Function that renders the shadowmap fbo onto a section of the screen
+	  */
+
 	void renderFBO();
 
 protected:
@@ -99,9 +100,15 @@ private:
 	void zoomIn();
 	void zoomOut();
 
-	void phong_rendering();
-	void wireframe_rendering();
-	void hiddenline_rendering();
+	/**
+	*	A member function pointer that will point to either phong_rendering, wireframe_rendering and hiddenline_rendering depending on which rendering mode the user is using.
+	*	The reason for doing this is so we don't have to make an ugly switch/case statement in our renderColorPass() function implementation.
+	*/
+	void (GameManager::*render_model)(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration);
+
+	void phong_rendering(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration);
+	void wireframe_rendering(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration);
+	void hiddenline_rendering(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration);
 
 	void init_fbo();
 
@@ -109,8 +116,6 @@ private:
 	GLuint fbo_vao;
 
 	GLuint fbo_vertex_bo;
-
-	int m_rendering_mode;
 
 	bool m_display_shadow_map;
 	
