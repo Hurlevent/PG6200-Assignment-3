@@ -135,7 +135,7 @@ GameManager::GameManager() : m_display_shadow_map(false) {
 	zoom = 1;
 	light.position = glm::vec3(10, 0, 0);
 
-	render_model = &GameManager::phong_rendering;
+	render_model = &GameManager::phong_rendering; // We'll start rendering our models with regular phong shading
 }
 
 GameManager::~GameManager() {
@@ -306,17 +306,6 @@ void GameManager::init() {
 	//////////////////////////////////////////////////////
 	////    END OF SHADER PROGRAM COMPILATION STAGE	  ////
 	//////////////////////////////////////////////////////
-	
-	
-	/*
-	//Set uniforms for the programs
-	//Typically diffuse_cubemap and shadowmap
-	phong_program->use();
-
-
-	phong_program->disuse();
-	CHECK_GL_ERRORS();
-	*/
 
 
 	//////////////////////////////////////////////
@@ -368,8 +357,6 @@ void GameManager::init() {
 	////////////////////////////////////////////////
 	////     END OF VAO INITIALIZING STAGE	   ////
 	///////////////////////////////////////////////
-
-	//initCubeMap();
 
 #ifdef _DEBUG
 	std::cout << "All resources has been initialized..." << std::endl;
