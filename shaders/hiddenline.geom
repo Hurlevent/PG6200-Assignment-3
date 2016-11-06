@@ -2,9 +2,7 @@
  
 
 layout(triangles) in;
-layout(triangle_strip, max_vertices = 6) out;
-
-//uniform vec3 hiddenline_color;
+layout(triangle_strip, max_vertices = 3) out;
 
 smooth in vec3 g_n[3];
 smooth in vec3 g_v[3];

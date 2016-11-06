@@ -31,8 +31,6 @@ void main() {
 	vec3 l = normalize(f_l);
     vec3 h = normalize(normalize(f_v)+l);
     vec3 n = normalize(f_n);
-	
-    //float diff = max(0.0f, dot(n, l));
 
     float spec = pow(max(0.0f, dot(n, h)), 128.0f);
 
