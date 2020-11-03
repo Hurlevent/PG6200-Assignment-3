@@ -12,7 +12,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "GLUtils/BO.hpp"
+#include "GLUtils/BO.h"
 
 class Model {
 public:

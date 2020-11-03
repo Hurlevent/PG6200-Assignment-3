@@ -1,6 +1,6 @@
 #include "ShadowFBO.h"
-#include "GLUtils/GLUtils.hpp"
 
+#include "GLUtils/GLUtils.h"
 
 ShadowFBO::ShadowFBO(unsigned int width, unsigned int height) {
 	this->width = width;

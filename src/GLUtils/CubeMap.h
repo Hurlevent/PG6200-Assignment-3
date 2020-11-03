@@ -9,7 +9,8 @@
 #include <IL/ilu.h>
 #include <GL/glew.h>
 
-#include "GLUtils/GLUtils.hpp"
+#include "GLUtils.h"
+#include "BO.h"
 
 namespace GLUtils {
 
@@ -68,14 +69,14 @@ private:
 				ilDeleteImages(1, &ImageName); // Delete the image name. 
 				throw std::runtime_error(error.str());
 			}
-			
+
 			width = ilGetInteger(IL_IMAGE_WIDTH); // getting image width
 			height = ilGetInteger(IL_IMAGE_HEIGHT); // and height
 			data.resize(width*height*3);
-			
+
 			ilCopyPixels(0, 0, 0, width, height, 1, IL_RGB, IL_UNSIGNED_BYTE, data.data());
 			ilDeleteImages(1, &ImageName); // Delete the image name. 
-			
+
 			glTexImage2D(faces[i], 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data.data());
 		}
 
@@ -86,7 +87,7 @@ private:
 	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > vertices;
 	std::shared_ptr<GLUtils::BO<GL_ELEMENT_ARRAY_BUFFER> > indices;
 	GLuint vao; //< Vertex array object
-	std::shared_ptr<GLUtils::Program> cubemap_program; 
+	std::shared_ptr<GLUtils::Program> m_cubemap_program;
 };
 
 } //Namespace

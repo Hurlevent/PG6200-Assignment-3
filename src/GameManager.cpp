@@ -1,6 +1,7 @@
 #include "GameManager.h"
 #include "GameException.h"
-#include "GLUtils/GLUtils.hpp"
+#include "GLUtils/GLUtils.h"
+
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -19,7 +20,6 @@ using std::cerr;
 using std::endl;
 using GLUtils::BO;
 using GLUtils::Program;
-using GLUtils::readFile;
 
 const float GameManager::near_plane = 0.5f;
 const float GameManager::far_plane = 30.0f;
@@ -262,7 +262,7 @@ void GameManager::init() {
 #ifdef _DEBUG
 	std::cout << "Attempting to compile phong-program..." << std::endl;
 #endif
-	
+
 	phong_program.reset(new Program("shaders/phong.vert", "shaders/phong.geom", "shaders/phong.frag"));
 
 #ifdef _DEBUG
@@ -296,7 +296,7 @@ void GameManager::init() {
 #endif
 
 	wireframe_program.reset(new Program("shaders/wireframe.vert", "shaders/wireframe.geom", "shaders/wireframe.frag"));
-	
+
 #ifdef _DEBUG
 	std::cout << "Checking for errors..." << std::endl;
 	CHECK_GL_ERRORS();
@@ -314,7 +314,7 @@ void GameManager::init() {
 
 	// Generating 2 VAOS!
 	glGenVertexArrays(2, &vao[0]);
-	
+
 	glBindVertexArray(vao[0]); 
 
 	// Sending our mesh as input to our shaders
@@ -384,7 +384,7 @@ void GameManager::init_fbo()
 		glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), &positions[0], GL_STATIC_DRAW);
 
 		fbo_program->setAttributePointer("in_Position", 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-		
+
 		glBindVertexArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -395,7 +395,7 @@ void GameManager::init_fbo()
 
 
 void GameManager::renderColorPass() {
-	
+
 	glViewport(0, 0, window_width, window_height);
 
 	// Makeing sure that we are rendering to screen
@@ -403,11 +403,11 @@ void GameManager::renderColorPass() {
 
 	//Create the new view matrix that takes the trackball view into account
 	glm::mat4 view_matrix_new = camera.view*cam_trackball.getTransform();
-	
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-	phong_program->use(); 
+	phong_program->use();
 
 	// Binding all textures that we'll be using
 
@@ -434,12 +434,12 @@ void GameManager::renderColorPass() {
 	glUniform3fv(phong_program->getUniform("phong_color"), 1, glm::value_ptr(glm::vec3(1.0f, 0.8f, 0.8f)));
 	glUniformMatrix4fv(phong_program->getUniform("phong_modelviewprojection_matrix"), 1, 0, glm::value_ptr(modelviewprojection_matrix));
 	glUniformMatrix4fv(phong_program->getUniform("phong_modelview_matrix_inverse"), 1, 0, glm::value_ptr(modelview_matrix_inverse));
-		
+
 	glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_shadow_map"), 0);
 	glProgramUniform1i(phong_program->name, phong_program->getUniform("phong_cube_map"), 1);
 
 	glDrawArrays(GL_TRIANGLES, 0, 36);
-	
+
 	/////////////////////////////////////////////////////////
 	/////		END OF RENDERING STEP FOR THE WALLS		/////
 	/////////////////////////////////////////////////////////
@@ -456,7 +456,7 @@ void GameManager::renderColorPass() {
 		0.0f, 0.0f, 0.5f, 0.0f,
 		0.5f, 0.5f, 0.5f, 1.0f
 		);
-	
+
 	/////////////////////////////////////////////////////////
 	/////		START OF RENDERING STEP FOR THE MODELS	/////
 	/////////////////////////////////////////////////////////
@@ -560,7 +560,8 @@ void GameManager::renderFBO()
 void GameManager::render() {
 	//Rotate the light a bit
 	float elapsed = static_cast<float>(my_timer.elapsedAndRestart());
-	glm::mat4 rotation = glm::rotate(elapsed*10.f, 0.0f, 1.0f, 0.0f);
+	glm::mat4 rotation = glm::rotate(elapsed*10.f, glm::vec3(0.0f, 1.0f, 0.0f));
+
 	light.position = glm::mat3(rotation)*light.position;
 	light.view = glm::lookAt(light.position,  glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
@@ -568,8 +569,8 @@ void GameManager::render() {
 	renderShadowPass();
 
 	// Render the screen!
-	renderColorPass(); 
-	
+	renderColorPass();
+
 	if (m_display_shadow_map) {
 		renderFBO();
 	}

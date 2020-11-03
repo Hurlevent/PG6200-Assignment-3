@@ -9,11 +9,12 @@
 #include <memory>
 
 #include <GL/glew.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <glm/glm.hpp>
 
 #include "Timer.h"
-#include "GLUtils/GLUtils.hpp"
+#include "GLUtils/Program.h"
+#include "GLUtils/CubeMap.h"
 #include "Model.h"
 #include "VirtualTrackball.h"
 #include "ShadowFBO.h"
@@ -21,20 +22,12 @@
 
 /**
  * This class handles the game logic and display.
- * Uses SDL as the display manager, and glm for 
+ * Uses SDL as the display manager, and glm for
  * vector and matrix computations
  */
 class GameManager {
 public:
-
-	/**
-	 * Constructor
-	 */
-	GameManager();
-
-	/**
-	 * Destructor
-	 */
+	explicit GameManager();
 	~GameManager();
 
 	/**
@@ -82,7 +75,7 @@ protected:
 
 	static const unsigned int window_width = 800;
 	static const unsigned int window_height = 600;
-	
+
 	static const unsigned int shadow_map_width = 1024;
 	static const unsigned int shadow_map_height = 1024;
 
@@ -92,7 +85,7 @@ protected:
 	static const float far_plane;
 	static const float fovy;
 	static const float cube_scale;
-	
+
 	static const float cube_vertices_data[];
 	static const float cube_normals_data[];
 
@@ -118,7 +111,7 @@ private:
 	GLuint fbo_vertex_bo;
 
 	bool m_display_shadow_map;
-	
+
 	GLuint vao[2]; //< Vertex array objects
 	std::shared_ptr<GLUtils::Program> phong_program, wireframe_program, exploded_view_program, shadow_program, hiddenline_program, fbo_program; // exploded_view_program is not in use
 	std::shared_ptr<GLUtils::CubeMap> diffuse_cubemap;
@@ -146,7 +139,7 @@ private:
 
 	SDL_Window* main_window; //< Our window handle
 	SDL_GLContext main_context; //< Our opengl context handle 
-	
+
 	VirtualTrackball cam_trackball;
 
 };

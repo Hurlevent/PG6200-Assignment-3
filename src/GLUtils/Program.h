@@ -5,23 +5,25 @@
 #include <sstream>
 #include <vector>
 #include <iomanip>
+#include <fstream>
 
 #include <GL/glew.h>
 
 namespace GLUtils {
 
-	
-inline std::string readFile(std::string file) {
+
+std::string readFile(const std::string & filename) {
 	int length;
 	std::string buffer;
 	std::string contents;
 
 	std::ifstream is;
-	is.open(file.c_str());
+
+  is.open(filename.c_str());
 
 	if (!is.good()) {
 		std::string err = "Could not open ";
-		err.append(file);
+		err.append(filename);
 		throw std::runtime_error(err);
 	}
 
@@ -47,26 +49,20 @@ inline std::string readFile(std::string file) {
 
 class Program {
 public:
-	Program(std::string vs, std::string fs) {
+	explicit Program(const std::string & vs, const std::string & fs) {
 		name = glCreateProgram();
 
-		std::string vs_src = readFile(vs);
-		std::string fs_src = readFile(fs);
-
-		attachShader(vs_src, GL_VERTEX_SHADER);
-		attachShader(fs_src, GL_FRAGMENT_SHADER);
+		attachShader(readFile(vs), GL_VERTEX_SHADER);
+		attachShader(readFile(fs), GL_FRAGMENT_SHADER);
 		link();
 	}
 
-	Program(std::string vs, std::string gs, std::string fs) {
+	explicit Program(const std::string & vs, const std::string & gs, const std::string & fs) {
 		name = glCreateProgram();
-		std::string vs_src = readFile(vs);
-		std::string gs_src = readFile(gs);
-		std::string fs_src = readFile(fs);
-		
-		attachShader(vs_src, GL_VERTEX_SHADER);
-		attachShader(gs_src, GL_GEOMETRY_SHADER);
-		attachShader(fs_src, GL_FRAGMENT_SHADER);
+
+		attachShader(readFile(vs), GL_VERTEX_SHADER);
+		attachShader(readFile(gs), GL_GEOMETRY_SHADER);
+		attachShader(readFile(fs), GL_FRAGMENT_SHADER);
 		link();
 	}
 
@@ -119,7 +115,7 @@ private:
 		}
 	}
 
-	void attachShader(std::string& src, unsigned int type) {
+	void attachShader(const std::string& src, unsigned int type) {
 		std::stringstream log;
 		// create shader object
 		GLuint s = glCreateShader(type);
@@ -160,7 +156,7 @@ private:
 			}
 			throw std::runtime_error(log.str());
 		}
-		
+
 		glAttachShader(name, s);
 	}
 

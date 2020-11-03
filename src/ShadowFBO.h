@@ -1,7 +1,7 @@
 #ifndef _SHADOWFBO_HPP__
 #define _SHADOWFBO_HPP__
 
-#include "GLUtils/GLUtils.hpp"
+#include <GL/glew.h>
 
 class ShadowFBO {
 public:

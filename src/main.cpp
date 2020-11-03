@@ -6,11 +6,7 @@
 #include <Windows.h>
 #endif
 
-
-/**
- * Simple program that starts our game manager
- */
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
 	try {
 		GameManager* game;
 		game = new GameManager();

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _GAME_EXCEPTION_H_
+#define _GAME_EXCEPTION_H_
 
 #include <stdexcept>
 #include <string>
@@ -18,3 +19,5 @@ public:
 
 
 #define THROW_EXCEPTION(msg) throw GameException(__FILE__, __LINE__, msg)
+
+#endif // _GAME_EXCEPTION_H_

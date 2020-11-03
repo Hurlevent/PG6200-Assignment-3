@@ -54,8 +54,4 @@ inline std::string mat4ToString(glm::mat4 matrix)
 
 }; //Namespace GLUtils
 
-#include "GLUtils/Program.hpp"
-#include "GLUtils/BO.hpp"
-#include "GLUtils/CubeMap.hpp"
-
 #endif
