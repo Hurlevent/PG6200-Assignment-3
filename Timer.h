@@ -17,31 +17,32 @@
 class Timer {
 
 public:
-	Timer() : startTime_(getCurrentTime()) {};
+	explicit Timer() : m_startTime(getCurrentTime()) {};
 
 	/**
 	 * Report the elapsed time in seconds (it will return a double,
 	 * so the fractional part is subsecond part).
 	 */
-	inline double elapsed() const {
-		return getCurrentTime() - startTime_;
+  double elapsed() const {
+		return getCurrentTime() - m_startTime;
 	};
 
 	/**
 	 * Report the elapsed time in seconds, and reset the timer.
 	 */
-	inline double elapsedAndRestart() {
-		double now = getCurrentTime();
-		double elapsed = now - startTime_;
-		startTime_ = now;
+	double elapsedAndRestart() {
+		auto now = getCurrentTime();
+	  auto elapsed = now - m_startTime;
+		m_startTime = now;
+
 		return elapsed;
 	};
 
 	/**
 	 * Restart the timer.
 	 */
-	inline void restart() {
-		startTime_ = getCurrentTime();
+  void restart() {
+		m_startTime = getCurrentTime();
 	};
 
 	/**
@@ -70,6 +71,6 @@ public:
 
 
 private:
-	double startTime_;
+	double m_startTime;
 };
 #endif // _TIMER_H_
