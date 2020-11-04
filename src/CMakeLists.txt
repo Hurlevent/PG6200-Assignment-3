@@ -17,6 +17,7 @@ add_executable(Bunny ${SOURCE_FILES})
 
 target_compile_features(Bunny PUBLIC cxx_std_17)
 
+target_compile_definitions(Bunny PUBLIC _DEBUG)
 
 # TODO: Use find_package() for cross platform support
 

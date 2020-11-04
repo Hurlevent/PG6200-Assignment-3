@@ -7,11 +7,11 @@
 
 /**
   * Simple class that implements a "virtual trackball"
-  * 
+  *
   */
 class VirtualTrackball {
 public:
-	VirtualTrackball();
+	explicit VirtualTrackball();
 	~VirtualTrackball();
 
 	/**
@@ -37,7 +37,7 @@ public:
 	  * Returns the transformation matrix from the current quaternion
 	  * @return the view matrix representing the rotation
 	  */
-	glm::mat4 getTransform();
+	glm::mat4 getTransform() const;
 
 
 	/**
@@ -52,7 +52,7 @@ private:
 	  * coordinates from absolute window coordinates (x=[0, w], y=[0, h]).
 	  * Note that we flip the y-axis.
 	  */
-	glm::vec2 getNormalizedWindowCoordinates(int x, int y);
+	glm::vec2 getNormalizedWindowCoordinates(int x, int y) const;
 
 	/**
 	  * Function that computes the closest 3D point on the unit sphere
@@ -60,14 +60,14 @@ private:
 	  */
 	glm::vec3 getClosestPointOnUnitSphere(int x, int y);
 
-	bool rotating; //Boolean to say if we should rotate or not
-	unsigned int w; //Window width
-	unsigned int h; //Window height
+	bool m_rotating; //Boolean to say if we should rotate or not
+	unsigned int m_width; //Window width
+	unsigned int m_height; //Window height
 
-	glm::quat view_quat_old; //View matrix that represents the old camera position
-	glm::quat view_quat_new; //View matrix that represents the new camera position
+	glm::quat m_view_quat_old; //View matrix that represents the old camera position
+	glm::quat m_view_quat_new; //View matrix that represents the new camera position
 
-	glm::vec3 point_on_sphere_begin; //Vector from origin to first point on the unit sphere
+	glm::vec3 m_point_on_sphere_begin; //Vector from origin to first point on the unit sphere
 };
 
 #endif

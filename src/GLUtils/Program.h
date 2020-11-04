@@ -11,101 +11,68 @@
 
 namespace GLUtils {
 
-
-std::string readFile(const std::string & filename) {
-	int length;
-	std::string buffer;
-	std::string contents;
-
-	std::ifstream is;
-
-  is.open(filename.c_str());
-
-	if (!is.good()) {
-		std::string err = "Could not open ";
-		err.append(filename);
-		throw std::runtime_error(err);
-	}
-
-	// get length of file:
-	is.seekg(0, std::ios::end);
-	length = static_cast<int>(is.tellg());
-	is.seekg(0, std::ios::beg);
-
-	// reserve memory:
-	contents.reserve(length);
-
-	// read data
-	while(getline(is,buffer)) {
-		contents.append(buffer);
-		contents.append("\n");
-	}
-	is.close();
-
-	return contents;
-}
-
-
-
 class Program {
 public:
-	explicit Program(const std::string & vs, const std::string & fs) {
-		name = glCreateProgram();
+	explicit Program(const std::string & vs, const std::string & fs)
+    : m_gl_program_id(glCreateProgram())
+  {
 
 		attachShader(readFile(vs), GL_VERTEX_SHADER);
 		attachShader(readFile(fs), GL_FRAGMENT_SHADER);
-		link();
+
+    link();
 	}
 
-	explicit Program(const std::string & vs, const std::string & gs, const std::string & fs) {
-		name = glCreateProgram();
-
+	explicit Program(const std::string & vs, const std::string & gs, const std::string & fs)
+    : m_gl_program_id(glCreateProgram())
+  {
 		attachShader(readFile(vs), GL_VERTEX_SHADER);
 		attachShader(readFile(gs), GL_GEOMETRY_SHADER);
 		attachShader(readFile(fs), GL_FRAGMENT_SHADER);
+
 		link();
 	}
 
-	GLuint name; //< OpenGL shader program
-
-	inline void use() {
-		glUseProgram(name);
+	void use() const {
+		glUseProgram(m_gl_program_id);
 	}
 
-	static inline void disuse() {
+	static void disuse() {
 		glUseProgram(0);
 	}
 
-	inline GLint getUniform(std::string var) {
-		GLint loc = glGetUniformLocation(name, var.c_str());
+  GLint getUniform(const std::string & var) const {
+		GLint loc = glGetUniformLocation(m_gl_program_id, var.c_str());
 		assert(loc >= 0);
 		return loc;
 	}
 
-	inline void setAttributePointer(std::string var, unsigned int size, GLenum type=GL_FLOAT, GLboolean normalized=GL_FALSE, GLsizei stride=0, GLvoid* pointer=NULL) {
-		GLint loc = glGetAttribLocation(name, var.c_str());
+  void setAttributePointer(const std::string & var, unsigned int size, GLenum type=GL_FLOAT, GLboolean normalized=GL_FALSE, GLsizei stride=0, GLvoid* pointer=NULL) const {
+		GLint loc = glGetAttribLocation(m_gl_program_id, var.c_str());
 		assert(loc >= 0);
 		glVertexAttribPointer(loc, size, type, normalized, stride, pointer);
 		glEnableVertexAttribArray(loc);
 	}
 
+  GLuint get_program_id() const { return m_gl_program_id; }
+
 private:
-	void link() {
+	void link() const {
 		std::stringstream log;
-		glLinkProgram(name);
+		glLinkProgram(m_gl_program_id);
 
 		// check for errors
 		GLint linkstatus;
-		glGetProgramiv(name, GL_LINK_STATUS, &linkstatus);
+		glGetProgramiv(m_gl_program_id, GL_LINK_STATUS, &linkstatus);
 		if (linkstatus != GL_TRUE) {
 			log << "Linking failed!" << std::endl;
 
 			GLint logsize;
-			glGetProgramiv(name, GL_INFO_LOG_LENGTH, &logsize);
+			glGetProgramiv(m_gl_program_id, GL_INFO_LOG_LENGTH, &logsize);
 
 			if (logsize > 0) {
 				std::vector < GLchar > infolog(logsize + 1);
-				glGetProgramInfoLog(name, logsize, NULL, &infolog[0]);
+				glGetProgramInfoLog(m_gl_program_id, logsize, NULL, &infolog[0]);
 				log << "--- error log ---" << std::endl;
 				log << std::string(infolog.begin(), infolog.end()) << std::endl;
 			} else {
@@ -115,7 +82,7 @@ private:
 		}
 	}
 
-	void attachShader(const std::string& src, unsigned int type) {
+	void attachShader(const std::string & src, unsigned int type) const {
 		std::stringstream log;
 		// create shader object
 		GLuint s = glCreateShader(type);
@@ -157,11 +124,46 @@ private:
 			throw std::runtime_error(log.str());
 		}
 
-		glAttachShader(name, s);
+		glAttachShader(m_gl_program_id, s);
 	}
+
+  static std::string readFile(const std::string & filename) {
+    int length;
+    std::string buffer;
+    std::string contents;
+
+    std::ifstream is;
+
+    is.open(filename.c_str());
+
+    if (!is.good()) {
+      std::string err = "Could not open ";
+      err.append(filename);
+      throw std::runtime_error(err);
+    }
+
+    // get length of file:
+    is.seekg(0, std::ios::end);
+    length = static_cast<int>(is.tellg());
+    is.seekg(0, std::ios::beg);
+
+    // reserve memory:
+    contents.reserve(length);
+
+    // read data
+    while(getline(is,buffer)) {
+      contents.append(buffer);
+      contents.append("\n");
+    }
+    is.close();
+
+    return contents;
+  }
+
+  GLuint m_gl_program_id; //< OpenGL shader program
 
 };
 
-}; //Namespace GLUtils
+} //Namespace GLUtils
 
 #endif
