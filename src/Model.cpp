@@ -3,7 +3,7 @@
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
 
-Model::Model(std::string filename, bool invert) {
+Model::Model(const std::string & filename, bool invert) {
 	std::vector<float> vertex_data, normal_data, color_data;
 	aiMatrix4x4 trafo;
 	aiIdentityMatrix4(&trafo);
@@ -19,47 +19,47 @@ Model::Model(std::string filename, bool invert) {
 	}
 
 	//Load the model recursively into data
-	min_dim = glm::vec3(std::numeric_limits<float>::max());
-	max_dim = -glm::vec3(std::numeric_limits<float>::max());
+	m_min_dim = glm::vec3(std::numeric_limits<float>::max());
+	m_max_dim = -glm::vec3(std::numeric_limits<float>::max());
 	//std::cout << min_dim.x << ", " << min_dim.y << ", " << min_dim.z << " - "  << max_dim.x << ", " << max_dim.y << ", " << max_dim.z << std::endl;
 	loadRecursive(invert, vertex_data, normal_data, color_data, scene, scene->mRootNode, trafo);
-	
-	n_vertices = vertex_data.size()/3;
-	
+
+	m_number_of_vertices = vertex_data.size()/3;
+
 	//Find the bounding box
-	for (int i=0; i<n_vertices; ++i) {
+	for (int i=0; i < m_number_of_vertices; ++i) {
 		float x = vertex_data[3*i];
 		float y = vertex_data[3*i+1];
 		float z = vertex_data[3*i+2];
-		
-		min_dim.x = std::min(min_dim.x, x);
-		min_dim.y = std::min(min_dim.y, y);
-		min_dim.z = std::min(min_dim.z, z);
 
-		max_dim.x = std::max(max_dim.x, x);
-		max_dim.y = std::max(max_dim.y, y);
-		max_dim.z = std::max(max_dim.z, z);
+		m_min_dim.x = std::min(m_min_dim.x, x);
+		m_min_dim.y = std::min(m_min_dim.y, y);
+		m_min_dim.z = std::min(m_min_dim.z, z);
+
+		m_max_dim.x = std::max(m_max_dim.x, x);
+		m_max_dim.y = std::max(m_max_dim.y, y);
+		m_max_dim.z = std::max(m_max_dim.z, z);
 	}
 
 	//Translate to center
-	glm::vec3 translation = (max_dim - min_dim) / glm::vec3(2.0f) + min_dim;
-	glm::vec3 scale_helper = glm::vec3(1.0f)/(max_dim - min_dim);
+	glm::vec3 translation = (m_max_dim - m_min_dim) / glm::vec3(2.0f) + m_min_dim;
+	glm::vec3 scale_helper = glm::vec3(1.0f)/(m_max_dim - m_min_dim);
 	glm::vec3 scale = glm::vec3(std::min(scale_helper.x, std::min(scale_helper.y, scale_helper.z)));
 	if (invert) scale = -scale;
-	
-	transform = glm::mat4(1.0);
-	transform = glm::scale(transform, scale);
-	transform = glm::translate(transform, -translation);
+
+	m_transform = glm::mat4(1.0);
+	m_transform = glm::scale(m_transform, scale);
+	m_transform = glm::translate(m_transform, -translation);
 
 	//Create the VBOs from the data.
-	if (fmod(n_vertices, 3.0f) < 0.000001) 
-		vertices.reset(new GLUtils::BO<GL_ARRAY_BUFFER>(vertex_data.data(), vertex_data.size()*sizeof(float)));
+	if (fmod(m_number_of_vertices, 3.0f) < 0.000001)
+		m_vertices.reset(new GLUtils::BO<GL_ARRAY_BUFFER>(vertex_data.data(), vertex_data.size()*sizeof(float)));
 	else
 		throw std::runtime_error("The number of vertices in the mesh is wrong");
-	if (normal_data.size() == 3*n_vertices) 
-		normals.reset(new GLUtils::BO<GL_ARRAY_BUFFER>(normal_data.data(), normal_data.size()*sizeof(float)));
-	if (color_data.size() == 4*n_vertices) 
-		colors.reset(new GLUtils::BO<GL_ARRAY_BUFFER>(color_data.data(), color_data.size()*sizeof(float)));
+	if (normal_data.size() == 3*m_number_of_vertices)
+		m_normals.reset(new GLUtils::BO<GL_ARRAY_BUFFER>(normal_data.data(), normal_data.size()*sizeof(float)));
+	if (color_data.size() == 4*m_number_of_vertices)
+		m_colors.reset(new GLUtils::BO<GL_ARRAY_BUFFER>(color_data.data(), color_data.size()*sizeof(float)));
 }
 
 Model::~Model() {
@@ -67,8 +67,8 @@ Model::~Model() {
 }
 
 void Model::loadRecursive(bool invert,
-			std::vector<float>& vertex_data, std::vector<float>& normal_data, 
-			std::vector<float>& color_data, 
+			std::vector<float>& vertex_data, std::vector<float>& normal_data,
+			std::vector<float>& color_data,
 			const aiScene* scene, const aiNode* node, aiMatrix4x4 modelview_matrix) {
 	//update transform matrix. notice that we also transpose it
 	aiMultiplyMatrix4(&modelview_matrix, &node->mTransformation);
@@ -82,16 +82,16 @@ void Model::loadRecursive(bool invert,
 
 		//Allocate data
 		vertex_data.reserve(vertex_data.size() + count*3);
-		if (mesh->HasNormals()) 
+		if (mesh->HasNormals())
 			normal_data.reserve(normal_data.size() + count*3);
-		if (mesh->mColors[0] != NULL) 
+		if (mesh->mColors[0] != NULL)
  			color_data.reserve(color_data.size() + count*4);
 
 		//Add the vertices from file
 		for (unsigned int t = 0; t < mesh->mNumFaces; ++t) {
 			const struct aiFace* face = &mesh->mFaces[t];
 			GLenum face_mode;
-			
+
 			if(face->mNumIndices != 3) {
 				std::cout << "Vertex count for face was " << face->mNumIndices << ", expected 3. Skipping face" << std::endl;
 				continue;
@@ -106,7 +106,7 @@ void Model::loadRecursive(bool invert,
 				vertex_data.push_back(tmp.x);
 				vertex_data.push_back(tmp.y);
 				vertex_data.push_back(tmp.z);
-				
+
 				if (mesh->HasNormals()) {
 					tmp = mesh->mNormals[index];
 					aiTransformVecByMatrix4(&tmp, &normal_matrix);
@@ -122,7 +122,7 @@ void Model::loadRecursive(bool invert,
 						normal_data.push_back(-tmp.z);
 					}
 				}
-				
+
 				if (mesh->mColors[0] != NULL) {
 					color_data.push_back(mesh->mColors[0][index].r);
 					color_data.push_back(mesh->mColors[0][index].g);

@@ -16,33 +16,33 @@
 
 class Model {
 public:
-	Model(std::string filename, bool invert=0);
+	explicit Model(const std::string & filename, bool invert=0);
 	~Model();
 
-	inline unsigned int getNVertices() {return n_vertices;}
-	inline glm::mat4 getTransform() {return transform;}
+  unsigned int getNumberOfVertices() const {return m_number_of_vertices;}
+  glm::mat4 getTransform() const {return m_transform;}
 
-	inline std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > getVertices() {return vertices;}
-	inline std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > getNormals() {return normals;}
-	inline std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > getColors() {return colors;}
+	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > getVertices() const { return m_vertices; }
+	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > getNormals() const { return m_normals; }
+	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > getColors() const { return m_colors; }
 
 private:
 	static void loadRecursive(bool invert,
-			std::vector<float>& vertex_data, std::vector<float>& normal_data, 
+			std::vector<float>& vertex_data, std::vector<float>& normal_data,
 			std::vector<float>& color_data,
 			const aiScene* scene, const aiNode* node, aiMatrix4x4 modelview_matrix);
-			
+
 	const aiScene* scene;
 
-	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > normals;
-	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > vertices;
-	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > colors;
+	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER>> m_normals;
+	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER>> m_vertices;
+	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER>> m_colors;
 
-	glm::vec3 min_dim;
-	glm::vec3 max_dim;
-	glm::mat4 transform;
+	glm::vec3 m_min_dim;
+	glm::vec3 m_max_dim;
+	glm::mat4 m_transform;
 
-	unsigned int n_vertices;
+	unsigned int m_number_of_vertices;
 };
 
 #endif

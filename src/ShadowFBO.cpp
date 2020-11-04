@@ -3,13 +3,13 @@
 #include "GLUtils/GLUtils.h"
 
 ShadowFBO::ShadowFBO(unsigned int width, unsigned int height) {
-	this->width = width;
-	this->height = height;
+	this->m_width = width;
+	this->m_height = height;
 
 	// Initialize Depth Texture
 
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	glGenTextures(1, &m_texture);
+	glBindTexture(GL_TEXTURE_2D, m_texture);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -20,10 +20,10 @@ ShadowFBO::ShadowFBO(unsigned int width, unsigned int height) {
 
 	// Create FBO and attach buffers
 
-	glGenFramebuffersEXT(1, &fbo);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
+	glGenFramebuffersEXT(1, &m_fbo);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 	glDrawBuffer(GL_NONE);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, texture, 0);
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, m_texture, 0);
 
 	glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -36,11 +36,11 @@ ShadowFBO::ShadowFBO(unsigned int width, unsigned int height) {
 }
 
 ShadowFBO::~ShadowFBO() {
-	glDeleteFramebuffersEXT(1, &fbo);
+	glDeleteFramebuffersEXT(1, &m_fbo);
 }
 
-void ShadowFBO::bind() {
-	glBindFramebufferEXT(GL_FRAMEBUFFER, fbo);
+void ShadowFBO::bind() const {
+	glBindFramebufferEXT(GL_FRAMEBUFFER, m_fbo);
 }
 
 void ShadowFBO::unbind() {

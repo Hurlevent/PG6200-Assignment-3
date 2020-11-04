@@ -27,7 +27,7 @@ public:
 		return getCurrentTime() - startTime_;
 	};
 
-	/** 
+	/**
 	 * Report the elapsed time in seconds, and reset the timer.
 	 */
 	inline double elapsedAndRestart() {
@@ -44,7 +44,7 @@ public:
 		startTime_ = getCurrentTime();
 	};
 
-	/** 
+	/**
 	 * Return the current time as number of elapsed seconds of this day.
 	 */
 	double static getCurrentTime() {

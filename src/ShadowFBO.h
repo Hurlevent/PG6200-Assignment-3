@@ -8,19 +8,19 @@ public:
 	ShadowFBO(unsigned int width, unsigned int height);
 	~ShadowFBO();
 
-	void bind();
+	void bind() const;
 	static void unbind();
 
-	unsigned int getWidth() {return width; }
-	unsigned int getHeight() {return height; }
+	unsigned int getWidth() const {return m_width; }
+	unsigned int getHeight() const {return m_height; }
 
-	GLuint getTexture() { return texture; }
+	GLuint getTexture() const { return m_texture; }
 
 private:
-	GLuint fbo;
-	GLuint depth;
-	GLuint texture;
-	unsigned int width, height;
+	GLuint m_fbo;
+	GLuint m_depth;
+	GLuint m_texture;
+	unsigned int m_width, m_height;
 };
 
 #endif

@@ -53,7 +53,7 @@ glm::vec2 VirtualTrackball::getNormalizedWindowCoordinates(int x, int y) const {
 	return p;
 }
 
-glm::vec3 VirtualTrackball::getClosestPointOnUnitSphere(int x, int y) {
+glm::vec3 VirtualTrackball::getClosestPointOnUnitSphere(int x, int y) const {
 	glm::vec2 normalized_coords;
 	glm::vec3 point_on_sphere;
 	float r;

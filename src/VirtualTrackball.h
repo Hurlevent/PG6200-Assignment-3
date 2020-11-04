@@ -58,7 +58,7 @@ private:
 	  * Function that computes the closest 3D point on the unit sphere
 	  * from the 2D window position.
 	  */
-	glm::vec3 getClosestPointOnUnitSphere(int x, int y);
+	glm::vec3 getClosestPointOnUnitSphere(int x, int y) const;
 
 	bool m_rotating; //Boolean to say if we should rotate or not
 	unsigned int m_width; //Window width

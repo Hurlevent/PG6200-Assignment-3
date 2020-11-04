@@ -477,7 +477,7 @@ void GameManager::renderColorPass() const {
 		CHECK_GL_ERRORS();
 #endif
 
-		glDrawArrays(GL_TRIANGLES, 0, m_model->getNVertices());
+		glDrawArrays(GL_TRIANGLES, 0, m_model->getNumberOfVertices());
 	}
 
 	/////////////////////////////////////////////////////////
@@ -515,7 +515,7 @@ void GameManager::renderShadowPass() {
     {
     transform = m_light.projection * m_light.view * model_matrix; // This matrix will transform the models into the light's clip space
 		glUniformMatrix4fv(m_shadow_program->getUniform("shadow_light_transform"), 1, 0, glm::value_ptr(transform));
-		glDrawArrays(GL_TRIANGLES, 0, m_model->getNVertices());
+		glDrawArrays(GL_TRIANGLES, 0, m_model->getNumberOfVertices());
   }
 
 	m_shadow_program->disuse();
