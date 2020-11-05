@@ -45,6 +45,8 @@ public:
 		m_startTime = getCurrentTime();
 	};
 
+ private:
+
 	/**
 	 * Return the current time as number of elapsed seconds of this day.
 	 */
@@ -69,8 +71,6 @@ public:
 #endif
   };
 
-
-private:
 	double m_startTime;
 };
 #endif // _TIMER_H_

@@ -557,7 +557,7 @@ void GameManager::renderFBO() const
 void GameManager::render() {
 	//Rotate the light a bit
 	float elapsed = static_cast<float>(m_my_timer.elapsedAndRestart());
-	glm::mat4 rotation = glm::rotate(elapsed * 10.f, glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 rotation = glm::rotate(elapsed, glm::vec3(0.0f, 1.0f, 0.0f));
 
 	m_light.position = glm::mat3(rotation) * m_light.position;
 	m_light.view = glm::lookAt(m_light.position,  glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
